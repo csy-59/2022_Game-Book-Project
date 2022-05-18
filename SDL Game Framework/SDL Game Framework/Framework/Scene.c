@@ -168,23 +168,22 @@ typedef struct tagScene {
 	Image			BGImage;							//배경화면
 	Music			BGM;							//배경 음악
 	Image			AdditionImage;						//추가 이미지
-	int32			AddImage_X;						//추가 이미지 위치
-	int32			AddImage_Y;						//추가 이미지 위치
+	int32			AddImageText;						//추가 이미지 위치
 	SoundEffect		EffectSound;						//효과음
 	int32			EffectSoundTiming;						//효과음 표현 타이밍
 	int32			DialogCount;						//텍스트 갯수
 	Text			DialogList[20][20];						//텍스트 배열
 	int32			OptionCount;						//옵션 갯수
-	Image			OptionImagesList[5];					//옵션 이미지 배열
+	Text			OptionList[5][5];					//옵션  배열
 	int32			NextSceneNumberList[5];					//옵션 선택시 넘어가는 씬 넘버
 	//int32			NextEndingSceneNumberList[5];				//다음 씬이 엔딩씬일 경우
 	bool			isEndingScene;						//엔딩인지
 } SceneStruct;
 
 #define SCENE_COUNT	150
-#define MAX_TEXT_SET_COUNT 2
+#define MAX_TEXT_SET_COUNT 13
 #define MAX_TEXT_COUNT 20
-#define MAX_Option_COUNT 2
+#define MAX_Option_COUNT 3
 
 SceneStruct Scenes[SCENE_COUNT];
 
@@ -195,25 +194,32 @@ void GetSceneData(void)
 {
 	CsvFile csv;
 	memset(&csv, 0, sizeof(CsvFile));
-	CreateCsvFile(&csv, "test.csv");
+	CreateCsvFile(&csv, "OBT.csv");
 
 
-	for (int32 i = 1; i < csv.RowCount;i++) {
+	for (int32 i = 1; i < csv.RowCount;i++) 
+	{
 
-		if (csv.Items[i] == NULL) {
+		if (csv.Items[i] == NULL) 
+		{
 			break;
 		}
 
 		int32 columCount = 0;
 
-		Scenes[i - 1].Number = ParseToInt(csv.Items[i][columCount++]) - 1;
-		Image_LoadImage(&Scenes[i - 1].BGImage, ParseToAscii(csv.Items[i][columCount++]));
-		Audio_LoadMusic(&Scenes[i - 1].BGM, ParseToAscii(csv.Items[i][columCount++]));
-
+		Scenes[i - 1].Number = ParseToInt(csv.Items[i][columCount++]) - 1;							
+		Image_LoadImage(&Scenes[i - 1].BGImage, ParseToAscii(csv.Items[i][columCount++])); 
+		Audio_LoadMusic(&Scenes[i - 1].BGM, ParseToAscii(csv.Items[i][columCount++]));   
+		Image_LoadImage(&Scenes[i - 1].AdditionImage, ParseToAscii(csv.Items[i][columCount++])); 
+		Scenes[i - 1].AddImageText = ParseToInt(csv.Items[i][columCount++]);  
+		Audio_LoadMusic(&Scenes[i - 1].EffectSound, ParseToAscii(csv.Items[i][columCount++]));
+		Scenes[i - 1].EffectSoundTiming = ParseToInt(csv.Items[i][columCount++]); 
 		//텍스트 데이터 저장
 		Scenes[i - 1].DialogCount = ParseToInt(csv.Items[i][columCount++]);
-		for (int32 j = 0; j < MAX_TEXT_SET_COUNT;j++) {
-			if (Scenes[i - 1].DialogCount > j) {
+		for (int32 j = 0; j < MAX_TEXT_SET_COUNT;j++)
+		{
+			if (Scenes[i - 1].DialogCount > j) 
+			{
 				wchar_t* temp = ParseToUnicode(csv.Items[i][columCount]);
 				//wchar_t* tempPointer;
 				//wchar_t* line = wcstok_s(*temp, N/A , tempPointer);
@@ -225,19 +231,20 @@ void GetSceneData(void)
 
 		//옵션 데이터 저장
 		Scenes[i - 1].OptionCount = ParseToInt(csv.Items[i][columCount++]);
-		for (int32 j = 0; j < MAX_Option_COUNT;j++) {
-			if (Scenes[i - 1].OptionCount > j) {
-				char* temp = ParseToAscii(csv.Items[i][columCount]);
-				printf("%s\n", temp);
-				Image_LoadImage(&Scenes[i - 1].OptionImagesList[j], temp);
-				Image_SetAlphaValue(&Scenes[i - 1].OptionImagesList[j], 125);
+		for (int32 j = 0; j < MAX_Option_COUNT;j++) 
+		{
+			if (Scenes[i - 1].OptionCount > j) 
+			{
+				wchar_t* temp = ParseToUnicode(csv.Items[i][columCount]);
+				Text_CreateText(&Scenes[i - 1].OptionList[j][0], "GmarketSansTTFBold.ttf", 40, temp, wcslen(temp));
 				columCount++;
 				Scenes[i-1].NextSceneNumberList[j] = ParseToInt(csv.Items[i][columCount]) - 1;
 				columCount++;
 			}
 		}
 		
-		if (Scenes[i - 1].OptionCount <= 0) {
+		if (Scenes[i - 1].OptionCount <= 0)
+		{
 			Scenes[i - 1].NextSceneNumberList[0] = ParseToInt(csv.Items[i][++columCount]) - 1;
 		}
 	}
@@ -624,6 +631,7 @@ typedef struct tagMainScene {
 bool isSceneChanging = false;
 bool showOptions = false;
 Text* ShowText;
+Text* ShowOptionText;
 int32 s_CurrentScene = 0;
 SDL_Color color = { 255,255,255,0 };
 void init_main(void)
@@ -645,6 +653,7 @@ void init_main(void)
 	isSceneChanging = false;
 	showOptions = false;
 	ShowText = NULL;
+	ShowOptionText = NULL;
 }
 
 void update_main(void)
@@ -652,20 +661,26 @@ void update_main(void)
 	MainScene* data = (MainScene*)g_Scene.Data;
 
 	//보통 씬일 경우
-	if (!isSceneChanging) {
-		if (data->BlackOutAlpha > 0) {
+	if (!isSceneChanging) 
+	{
+		if (data->BlackOutAlpha > 0) 
+		{
 			data->BlackOutAlpha -= 5;
 		}
-		else {
+		else 
+		{
 			//키보드 값 입력
-			if (Input_GetKeyDown(VK_SPACE)) {
+			if (Input_GetKeyDown(VK_SPACE)) 
+			{
 
-				if (data->CurrentTextNumber < data->Scene->DialogCount) {
+				if (data->CurrentTextNumber < data->Scene->DialogCount) 
+				{
 					ShowText = &data->Scene->DialogList[data->CurrentTextNumber];
 					data->CurrentTextNumber++;
 					color.a = 0;
 				}
-				else if (data->Scene->OptionCount <= 0) {
+				else if (data->Scene->OptionCount <= 0) 
+				{
 					isSceneChanging = true;
 					Audio_FadeOut(1800);
 				}
@@ -673,60 +688,62 @@ void update_main(void)
 		}
 
 		//텍스트 표시가 필요한 경우
-		if (data->CurrentTextNumber < data->Scene->DialogCount) {
-			int32 i = 0;
-			ShowText = data->Scene->DialogList[data->CurrentTextNumber];
-			if (color.a < 255) {
+		if (data->CurrentTextNumber < data->Scene->DialogCount) 
+		{
+			ShowText = &data->Scene->DialogList[data->CurrentTextNumber];
+			if (color.a < 255) 
+			{
 				color.a += 5;
 			}
 		}
 		//옵션이 나와야하는 경우
-		else {
+		else 
+		{
 			showOptions = true;
-
+			ShowOptionText = &data->Scene->OptionList[data->CurrentOptionNumber];
 			//선택지 선택
 			int32 optionCount = data->Scene->OptionCount;
 
-			Image_SetAlphaValue(&data->Scene->OptionImagesList[data->CurrentOptionNumber], 125);
-			if (Input_GetKeyDown('1') || Input_GetKeyDown(VK_NUMPAD1)) {
-				if (optionCount >= 1) {
-					data->CurrentOptionNumber = 0;
-				}
-			}
-			if (Input_GetKeyDown('2') || Input_GetKeyDown(VK_NUMPAD2)) {
-				if (optionCount >= 2) {
-					data->CurrentOptionNumber = 1;
-				}
-			}
-			if (Input_GetKeyDown('3') || Input_GetKeyDown(VK_NUMPAD3)) {
-				if (optionCount >= 3) {
-					data->CurrentOptionNumber = 2;
-				}
-			}
-			if (Input_GetKeyDown('4') || Input_GetKeyDown(VK_NUMPAD4)) {
-				if (optionCount >= 4) {
-					data->CurrentOptionNumber = 3;
-				}
-			}
+			//Image_SetAlphaValue(&data->Scene->OptionList[data->CurrentOptionNumber], 125);
+			//if (Input_GetKeyDown('1') || Input_GetKeyDown(VK_NUMPAD1)) {
+			//	if (optionCount >= 1) {
+			//		data->CurrentOptionNumber = 0;
+			//	}
+			//}
+			//if (Input_GetKeyDown('2') || Input_GetKeyDown(VK_NUMPAD2)) {
+			//	if (optionCount >= 2) {
+			//		data->CurrentOptionNumber = 1;
+			//	}
+			//}
+			//if (Input_GetKeyDown('3') || Input_GetKeyDown(VK_NUMPAD3)) {
+			//	if (optionCount >= 3) {
+			//		data->CurrentOptionNumber = 2;
+			//	}
+			//}
+			//if (Input_GetKeyDown('4') || Input_GetKeyDown(VK_NUMPAD4)) {
+			//	if (optionCount >= 4) {
+			//		data->CurrentOptionNumber = 3;
+			//	}
+			//}
 
 			//좌우키로 설정
-			if (Input_GetKeyDown(VK_LEFT)) {
-				if (data->CurrentOptionNumber > 0) {
-					data->CurrentOptionNumber--;
-				}
-				else {
-					data->CurrentOptionNumber = data->Scene->OptionCount - 1;
-				}
-			}
+			//if (Input_GetKeyDown(VK_LEFT)) {
+			//	if (data->CurrentOptionNumber > 0) {
+			//		data->CurrentOptionNumber--;
+			//	}
+			//	else {
+			//		data->CurrentOptionNumber = data->Scene->OptionCount - 1;
+			//	}
+			//}
 
-			if (Input_GetKeyDown(VK_RIGHT)) {
-				if (data->CurrentOptionNumber < data->Scene->OptionCount - 1) {
-					data->CurrentOptionNumber++;
-				}
-				else {
-					data->CurrentOptionNumber = 0;
-				}
-			}
+			//if (Input_GetKeyDown(VK_RIGHT)) {
+			//	if (data->CurrentOptionNumber < data->Scene->OptionCount - 1) {
+			//		data->CurrentOptionNumber++;
+			//	}
+			//	else {
+			//		data->CurrentOptionNumber = 0;
+			//	}
+			//}
 
 			//위 아래 키로
 			if (Input_GetKeyDown(VK_UP)) {
@@ -745,7 +762,7 @@ void update_main(void)
 				}
 			}
 
-			Image_SetAlphaValue(&data->Scene->OptionImagesList[data->CurrentOptionNumber], 255);
+			//Image_SetAlphaValue(&data->Scene->OptionList[data->CurrentOptionNumber], 255);
 
 			//선택지 선택
 			if (Input_GetKeyDown(VK_RETURN)) {
@@ -756,7 +773,8 @@ void update_main(void)
 	}
 
 	else {
-		if (data->BlackOutAlpha < 255) {
+		if (data->BlackOutAlpha < 255) 
+		{
 			data->BlackOutAlpha += 5;
 		}
 		else {
@@ -795,15 +813,26 @@ void render_main(void)
 	}
 
 	//선택지 출력
+	
 	if (showOptions) {
 		if (data->Scene->OptionCount > 2) {
-			for (int i = 0; i < data->Scene->OptionCount; i++) {
-				Renderer_DrawImage(&data->Scene->OptionImagesList[i], 250 + i % 2 * 700, 600 + (i / 2) * 200);
+			for (int i = 0; i < data->Scene->OptionCount; i++)
+			{
+				while (ShowOptionText[i].Length != 0)
+				{
+					Renderer_DrawTextSolid(&ShowOptionText[i], 250 + i % 2 * 700, 600 + (i / 2) * 200, color);
+					i++;
+				}
 			}
 		}
 		else {
-			for (int i = 0; i < data->Scene->OptionCount; i++) {
-				Renderer_DrawImage(&data->Scene->OptionImagesList[i], 250 + i % 2 * 700, 700 + (i / 2) * 200);
+			for (int i = 0; i < data->Scene->OptionCount; i++) 
+			{
+				while (ShowOptionText[i].Length != 0)
+				{
+					Renderer_DrawTextSolid(&ShowOptionText[i], 250 + i % 2 * 700, 600 + (i / 2) * 200, color);
+					i++;
+				}
 			}
 		}
 	}
