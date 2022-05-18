@@ -207,16 +207,16 @@ void GetSceneData(void)
 
 		int32 columCount = 0;
 
-		Scenes[i - 1].Number = ParseToInt(csv.Items[i][columCount++]) - 1;							
-		Image_LoadImage(&Scenes[i - 1].BGImage, ParseToAscii(csv.Items[i][columCount++])); 
-		Audio_LoadMusic(&Scenes[i - 1].BGM, ParseToAscii(csv.Items[i][columCount++]));   
-		Image_LoadImage(&Scenes[i - 1].AdditionImage, ParseToAscii(csv.Items[i][columCount++])); 
-		Scenes[i - 1].AddImageText = ParseToInt(csv.Items[i][columCount++]);  
-		Audio_LoadMusic(&Scenes[i - 1].EffectSound, ParseToAscii(csv.Items[i][columCount++]));
-		Scenes[i - 1].EffectSoundTiming = ParseToInt(csv.Items[i][columCount++]); 
+		Scenes[i - 1].Number = ParseToInt(csv.Items[i][columCount++]);							//0
+		Image_LoadImage(&Scenes[i - 1].BGImage, ParseToAscii(csv.Items[i][columCount++])); //1
+		Audio_LoadMusic(&Scenes[i - 1].BGM, ParseToAscii(csv.Items[i][columCount++]));   //2
+		Image_LoadImage(&Scenes[i - 1].AdditionImage, ParseToAscii(csv.Items[i][columCount++])); //3
+		Scenes[i - 1].AddImageText = ParseToInt(csv.Items[i][columCount++]);  //4
+		Audio_LoadMusic(&Scenes[i - 1].EffectSound, ParseToAscii(csv.Items[i][columCount++]));//5
+		Scenes[i - 1].EffectSoundTiming = ParseToInt(csv.Items[i][columCount++]); //6
 		//텍스트 데이터 저장
-		Scenes[i - 1].DialogCount = ParseToInt(csv.Items[i][columCount++]);
-		for (int32 j = 0; j < MAX_TEXT_SET_COUNT;j++)
+		Scenes[i - 1].DialogCount = ParseToInt(csv.Items[i][columCount++]);//7
+		for (int32 j = 0; j < MAX_TEXT_SET_COUNT;j++) 
 		{
 			if (Scenes[i - 1].DialogCount > j) 
 			{
@@ -227,10 +227,10 @@ void GetSceneData(void)
 				Text_CreateText(&Scenes[i - 1].DialogList[j][1], "GmarketSansTTFBold.ttf", 25, "", wcslen(""));
 			}
 			columCount++;
-		}
+		}//20
 
 		//옵션 데이터 저장
-		Scenes[i - 1].OptionCount = ParseToInt(csv.Items[i][columCount++]);
+		Scenes[i - 1].OptionCount = ParseToInt(csv.Items[i][columCount++]);  //21  
 		for (int32 j = 0; j < MAX_Option_COUNT;j++) 
 		{
 			if (Scenes[i - 1].OptionCount > j) 
@@ -238,14 +238,14 @@ void GetSceneData(void)
 				wchar_t* temp = ParseToUnicode(csv.Items[i][columCount]);
 				Text_CreateText(&Scenes[i - 1].OptionList[j][0], "GmarketSansTTFBold.ttf", 40, temp, wcslen(temp));
 				columCount++;
-				Scenes[i-1].NextSceneNumberList[j] = ParseToInt(csv.Items[i][columCount]) - 1;
+				Scenes[i - 1].NextSceneNumberList[j] = ParseToInt(csv.Items[i][columCount]);
 				columCount++;
 			}
 		}
 		
 		if (Scenes[i - 1].OptionCount <= 0)
 		{
-			Scenes[i - 1].NextSceneNumberList[0] = ParseToInt(csv.Items[i][++columCount]) - 1;
+			Scenes[i - 1].NextSceneNumberList[0] = ParseToInt(csv.Items[i][++columCount]);
 		}
 	}
 
@@ -704,46 +704,46 @@ void update_main(void)
 			//선택지 선택
 			int32 optionCount = data->Scene->OptionCount;
 
-			//Image_SetAlphaValue(&data->Scene->OptionList[data->CurrentOptionNumber], 125);
-			//if (Input_GetKeyDown('1') || Input_GetKeyDown(VK_NUMPAD1)) {
-			//	if (optionCount >= 1) {
-			//		data->CurrentOptionNumber = 0;
-			//	}
-			//}
-			//if (Input_GetKeyDown('2') || Input_GetKeyDown(VK_NUMPAD2)) {
-			//	if (optionCount >= 2) {
-			//		data->CurrentOptionNumber = 1;
-			//	}
-			//}
-			//if (Input_GetKeyDown('3') || Input_GetKeyDown(VK_NUMPAD3)) {
-			//	if (optionCount >= 3) {
-			//		data->CurrentOptionNumber = 2;
-			//	}
-			//}
-			//if (Input_GetKeyDown('4') || Input_GetKeyDown(VK_NUMPAD4)) {
-			//	if (optionCount >= 4) {
-			//		data->CurrentOptionNumber = 3;
-			//	}
-			//}
+			Image_SetAlphaValue(&data->Scene->OptionList[data->CurrentOptionNumber], 125);
+			if (Input_GetKeyDown('1') || Input_GetKeyDown(VK_NUMPAD1)) {
+				if (optionCount >= 1) {
+					data->CurrentOptionNumber = 0;
+				}
+			}
+			if (Input_GetKeyDown('2') || Input_GetKeyDown(VK_NUMPAD2)) {
+				if (optionCount >= 2) {
+					data->CurrentOptionNumber = 1;
+				}
+			}
+			if (Input_GetKeyDown('3') || Input_GetKeyDown(VK_NUMPAD3)) {
+				if (optionCount >= 3) {
+					data->CurrentOptionNumber = 2;
+				}
+			}
+			if (Input_GetKeyDown('4') || Input_GetKeyDown(VK_NUMPAD4)) {
+				if (optionCount >= 4) {
+					data->CurrentOptionNumber = 3;
+				}
+			}
 
 			//좌우키로 설정
-			//if (Input_GetKeyDown(VK_LEFT)) {
-			//	if (data->CurrentOptionNumber > 0) {
-			//		data->CurrentOptionNumber--;
-			//	}
-			//	else {
-			//		data->CurrentOptionNumber = data->Scene->OptionCount - 1;
-			//	}
-			//}
+			if (Input_GetKeyDown(VK_LEFT)) {
+				if (data->CurrentOptionNumber > 0) {
+					data->CurrentOptionNumber--;
+				}
+				else {
+					data->CurrentOptionNumber = data->Scene->OptionCount - 1;
+				}
+			}
 
-			//if (Input_GetKeyDown(VK_RIGHT)) {
-			//	if (data->CurrentOptionNumber < data->Scene->OptionCount - 1) {
-			//		data->CurrentOptionNumber++;
-			//	}
-			//	else {
-			//		data->CurrentOptionNumber = 0;
-			//	}
-			//}
+			if (Input_GetKeyDown(VK_RIGHT)) {
+				if (data->CurrentOptionNumber < data->Scene->OptionCount - 1) {
+					data->CurrentOptionNumber++;
+				}
+				else {
+					data->CurrentOptionNumber = 0;
+				}
+			}
 
 			//위 아래 키로
 			if (Input_GetKeyDown(VK_UP)) {
