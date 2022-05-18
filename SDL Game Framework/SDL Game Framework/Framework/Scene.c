@@ -619,69 +619,145 @@ typedef struct tagMainScene {
 	int32		BlackOutAlpha;
 } MainScene;
 
-typedef struct mainstruct
-{	
-	int32			Number;						//씬 넘버
-	Image			BGImage;					//배경화면
-	Music			BGM;						//배경 음악
-	Text			DialogList[5];				//텍스트 배열
-	int32			TextX;								
-	int32			TextY;
-	int32			NextSceneNumberList[6];			//옵션 선택시 넘어가는 씬 넘버
-	int32			NextEndingSceneNumberList[6];	//다음 씬이 엔딩씬일 경우
-
-} Mainscene;
-
-#define SCENE_COUNT	8
-
-Mainscene Scenes[SCENE_COUNT];
-
-
+bool isSceneChanging = false;
+bool showOptions = false;
 Text* ShowText;
 int32 s_CurrentScene = 0;
 SDL_Color color = { 255,255,255,0 };
 void init_main(void)
 {
-	
-	
-	g_Scene.Data = malloc(sizeof(Mainscene));
-	memset(g_Scene.Data, 0, sizeof(Mainscene));
-	Mainscene* data = (Mainscene*)g_Scene.Data;
-	
+	g_Scene.Data = malloc(sizeof(MainScene));
+	memset(g_Scene.Data, 0, sizeof(MainScene));
 
+	MainScene* data = (MainScene*)g_Scene.Data;
 
+	data->Scene = &Scenes[s_CurrentScene];
+	data->isEndScene = false;
+	data->CurrentOptionNumber = 0;
+	data->CurrentTextNumber = 0;
+	data->BlackOutAlpha = 255;
+	Image_LoadImage(&data->BlackOutImage, "black.jpg");
+	Image_SetAlphaValue(&data->BlackOutImage, data->BlackOutAlpha);
+	Audio_PlayFadeIn(&data->Scene->BGM, INFINITY_LOOP, 2000);
 
-
+	isSceneChanging = false;
+	showOptions = false;
+	ShowText = NULL;
 }
-bool isSceneChanging = false;
+
 void update_main(void)
 {
-	Mainscene* data = (Mainscene*)g_Scene.Data;
+	MainScene* data = (MainScene*)g_Scene.Data;
 
 	//보통 씬일 경우
-	if (!isSceneChanging)
-	{
-		
-		
-			
-	
-	
-			if (Input_GetKeyDown(VK_RETURN)) 
-			{
+	if (!isSceneChanging) {
+		if (data->BlackOutAlpha > 0) {
+			data->BlackOutAlpha -= 5;
+		}
+		else {
+			//키보드 값 입력
+			if (Input_GetKeyDown(VK_SPACE)) {
+
+				if (data->CurrentTextNumber < data->Scene->DialogCount) {
+					ShowText = &data->Scene->DialogList[data->CurrentTextNumber];
+					data->CurrentTextNumber++;
+					color.a = 0;
+				}
+				else if (data->Scene->OptionCount <= 0) {
+					isSceneChanging = true;
+					Audio_FadeOut(1800);
+				}
+			}
+		}
+
+		//텍스트 표시가 필요한 경우
+		if (data->CurrentTextNumber < data->Scene->DialogCount) {
+			int32 i = 0;
+			ShowText = data->Scene->DialogList[data->CurrentTextNumber];
+			if (color.a < 255) {
+				color.a += 5;
+			}
+		}
+		//옵션이 나와야하는 경우
+		else {
+			showOptions = true;
+
+			//선택지 선택
+			int32 optionCount = data->Scene->OptionCount;
+
+			Image_SetAlphaValue(&data->Scene->OptionImagesList[data->CurrentOptionNumber], 125);
+			if (Input_GetKeyDown('1') || Input_GetKeyDown(VK_NUMPAD1)) {
+				if (optionCount >= 1) {
+					data->CurrentOptionNumber = 0;
+				}
+			}
+			if (Input_GetKeyDown('2') || Input_GetKeyDown(VK_NUMPAD2)) {
+				if (optionCount >= 2) {
+					data->CurrentOptionNumber = 1;
+				}
+			}
+			if (Input_GetKeyDown('3') || Input_GetKeyDown(VK_NUMPAD3)) {
+				if (optionCount >= 3) {
+					data->CurrentOptionNumber = 2;
+				}
+			}
+			if (Input_GetKeyDown('4') || Input_GetKeyDown(VK_NUMPAD4)) {
+				if (optionCount >= 4) {
+					data->CurrentOptionNumber = 3;
+				}
+			}
+
+			//좌우키로 설정
+			if (Input_GetKeyDown(VK_LEFT)) {
+				if (data->CurrentOptionNumber > 0) {
+					data->CurrentOptionNumber--;
+				}
+				else {
+					data->CurrentOptionNumber = data->Scene->OptionCount - 1;
+				}
+			}
+
+			if (Input_GetKeyDown(VK_RIGHT)) {
+				if (data->CurrentOptionNumber < data->Scene->OptionCount - 1) {
+					data->CurrentOptionNumber++;
+				}
+				else {
+					data->CurrentOptionNumber = 0;
+				}
+			}
+
+			//위 아래 키로
+			if (Input_GetKeyDown(VK_UP)) {
+				if (data->Scene->OptionCount >= 3) {
+					if (data->CurrentOptionNumber >= 2) {
+						data->CurrentOptionNumber -= 2;
+					}
+				}
+			}
+
+			if (Input_GetKeyDown(VK_DOWN)) {
+				if (data->Scene->OptionCount >= 3) {
+					if (data->CurrentOptionNumber < data->Scene->OptionCount / 2) {
+						data->CurrentOptionNumber += 2;
+					}
+				}
+			}
+
+			Image_SetAlphaValue(&data->Scene->OptionImagesList[data->CurrentOptionNumber], 255);
+
+			//선택지 선택
+			if (Input_GetKeyDown(VK_RETURN)) {
 				isSceneChanging = true;
-				data->Number++;
 				Audio_FadeOut(1800);
 			}
-		
+		}
 	}
-	else 
-	{
-		if (data->BlackOutAlpha < 255) 
-		{
+
+	else {
+		if (data->BlackOutAlpha < 255) {
 			data->BlackOutAlpha += 5;
 		}
-		else 
-		{
+		else {
 			isSceneChanging = false;
 			s_CurrentScene = data->Scene->NextSceneNumberList[data->CurrentOptionNumber];
 			//다음 씬이 -1, 즉 엔딩일때는 타이틀로 돌아감. 아니면 다음 씬을 구성
@@ -701,12 +777,11 @@ void update_main(void)
 
 void render_main(void)
 {
-	Mainscene* data = (Mainscene*)g_Scene.Data;
+	MainScene* data = (MainScene*)g_Scene.Data;
 
 	//배경 이미지 출력
-	//Renderer_DrawImage(&data->Scene->BGImage, 0, 0);
+	Renderer_DrawImage(&data->Scene->BGImage, 0, 0);
 	//Renderer_DrawImage(&TextBGImage, 30, 30);
-	Renderer_DrawImage(&data->BGImage, 0, 0);
 
 	//텍스트 출력
 	if (ShowText != NULL) {
@@ -717,11 +792,27 @@ void render_main(void)
 		}
 	}
 
+	//선택지 출력
+	if (showOptions) {
+		if (data->Scene->OptionCount > 2) {
+			for (int i = 0; i < data->Scene->OptionCount; i++) {
+				Renderer_DrawImage(&data->Scene->OptionImagesList[i], 250 + i % 2 * 700, 600 + (i / 2) * 200);
+			}
+		}
+		else {
+			for (int i = 0; i < data->Scene->OptionCount; i++) {
+				Renderer_DrawImage(&data->Scene->OptionImagesList[i], 250 + i % 2 * 700, 700 + (i / 2) * 200);
+			}
+		}
+	}
+
+	//페이드 인 페이드 아웃 효과를 위한 검은색 배경
+	Renderer_DrawImage(&data->BlackOutImage, 0, 0);
 }
 
 void release_main(void)
 {
-	Mainscene* data = (Mainscene*)g_Scene.Data;
+	MainScene* data = (MainScene*)g_Scene.Data;
 
 	SafeFree(g_Scene.Data);
 }
@@ -788,4 +879,5 @@ void Scene_Change(void)
 	g_Scene.Init();
 
 	s_nextScene = SCENE_NULL;
+
 }
