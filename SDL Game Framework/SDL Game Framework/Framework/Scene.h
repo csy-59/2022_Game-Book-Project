@@ -2,9 +2,6 @@
 
 #include "Type.h"
 
-
-
-
 typedef struct Scene
 {
 	void (*Init)(void);		// 씬을 초기화 하는 함수

@@ -2,11 +2,12 @@
 #include "Scene.h"
 #include "Csv.h"
 #include "Framework.h"
-#include "Csv.h"
+
 
 Scene g_Scene;
 
 static ESceneType s_nextScene = SCENE_NULL;
+
 
 /*
 void setScenes(void) {
@@ -652,7 +653,7 @@ void init_main(void)
 
 
 }
-
+bool isSceneChanging = false;
 void update_main(void)
 {
 	Mainscene* data = (Mainscene*)g_Scene.Data;
@@ -671,14 +672,16 @@ void update_main(void)
 				data->Number++;
 				Audio_FadeOut(1800);
 			}
-		}
+		
 	}
-
-	else {
-		if (data->BlackOutAlpha < 255) {
+	else 
+	{
+		if (data->BlackOutAlpha < 255) 
+		{
 			data->BlackOutAlpha += 5;
 		}
-		else {
+		else 
+		{
 			isSceneChanging = false;
 			s_CurrentScene = data->Scene->NextSceneNumberList[data->CurrentOptionNumber];
 			//다음 씬이 -1, 즉 엔딩일때는 타이틀로 돌아감. 아니면 다음 씬을 구성
