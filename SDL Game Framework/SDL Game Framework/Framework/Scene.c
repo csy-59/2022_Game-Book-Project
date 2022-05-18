@@ -103,7 +103,7 @@ void init_title(void)
 	TitleSceneData* data = (TitleSceneData*)g_Scene.Data;
 
 	data->FontSize = 48;
-	Text_CreateText(&data->EnterText, "chosun.ttf", data->FontSize, L"--- PRESS THE ENTER ---", 24);
+	Text_CreateText(&data->EnterText, "GmarketSansTTFBold.ttf", data->FontSize, L"--- PRESS THE SPACE ---", 24);
 
 	Image_LoadImage(&data->TitleImage, "title_2.jpg");
 	data->X = 0;
@@ -122,7 +122,7 @@ void update_title(void)
 {
 	TitleSceneData* data = (TitleSceneData*)g_Scene.Data;
 
-	if (Input_GetKeyDown(VK_RETURN))
+	if (Input_GetKeyDown(VK_SPACE))
 	{
 		Scene_SetNextScene(SCENE_CREDIT);
 	}
@@ -189,18 +189,10 @@ typedef struct tagScene {
 SceneStruct Scenes[SCENE_COUNT];
 
 
-#pragma region CreditScene
-typedef struct CreditSceneData
-{
-	Text	EnterText;
-	int32	FontSize;
-	TitleSceneData TitleBGM;
-	Image	CreditImage;
-	int32	X;
-	int32	Y;
-} CreditSceneData;
 
-void GetSceneData(void) {
+
+void GetSceneData(void)
+{
 	CsvFile csv;
 	memset(&csv, 0, sizeof(CsvFile));
 	CreateCsvFile(&csv, "test.csv");
@@ -225,8 +217,8 @@ void GetSceneData(void) {
 				wchar_t* temp = ParseToUnicode(csv.Items[i][columCount]);
 				//wchar_t* tempPointer;
 				//wchar_t* line = wcstok_s(*temp, N/A , tempPointer);
-				Text_CreateText(&Scenes[i - 1].DialogList[j][0], "chosun.ttf", 25, temp, wcslen(temp));
-				Text_CreateText(&Scenes[i - 1].DialogList[j][1], "chosun.ttf", 25, "", wcslen(""));
+				Text_CreateText(&Scenes[i - 1].DialogList[j][0], "GmarketSansTTFBold.ttf", 25, temp, wcslen(temp));
+				Text_CreateText(&Scenes[i - 1].DialogList[j][1], "GmarketSansTTFBold.ttf", 25, "", wcslen(""));
 			}
 			columCount++;
 		}
@@ -253,6 +245,16 @@ void GetSceneData(void) {
 	FreeCsvFile(&csv);
 
 }
+#pragma region CreditScene
+typedef struct CreditSceneData
+{
+	Text	EnterText;
+	int32	FontSize;
+	TitleSceneData TitleBGM;
+	Image	CreditImage;
+	int32	X;
+	int32	Y;
+} CreditSceneData;
 
 void init_credit(void)
 {
@@ -265,7 +267,7 @@ void init_credit(void)
 	CreditSceneData* data = (CreditSceneData*)g_Scene.Data;
 
 	data->FontSize = 48;
-	Text_CreateText(&data->EnterText, "chosun.ttf", data->FontSize, L"--- PRESS THE ENTER ---", 24);
+	Text_CreateText(&data->EnterText, "GmarketSansTTFBold.ttf", data->FontSize, L"--- PRESS THE SPACE ---", 24);
 
 	Image_LoadImage(&data->CreditImage, "credit.jpg");
 	data->X = 0;
@@ -276,7 +278,7 @@ void update_credit(void)
 {
 	CreditSceneData* data = (CreditSceneData*)g_Scene.Data;
 
-	if (Input_GetKeyDown(VK_RETURN))
+	if (Input_GetKeyDown(VK_SPACE))
 	{
 		Scene_SetNextScene(SCENE_INTRO);
 		Audio_Stop();
@@ -288,7 +290,7 @@ void render_credit(void)
 	CreditSceneData* data = (CreditSceneData*)g_Scene.Data;
 	Renderer_DrawImage(&data->CreditImage, data->X, data->Y);
 	
-	static float elapsedTime = 0;
+	static float elapsedTime = 1.0;
 	elapsedTime += Timer_GetDeltaTime();
 	if (elapsedTime >= 1.0f)
 	{
@@ -449,7 +451,7 @@ void init_intro(void)
 }
 void update_intro(void)
 {
-	if (Input_GetKeyDown(VK_RETURN))
+	if (Input_GetKeyDown(VK_SPACE))
 	{
 		count++;
 		if (count == 7)
