@@ -149,8 +149,13 @@ typedef struct tagScene {
 	Image			BGImage;							//배경화면
 	Music			BGM;							//배경 음악
 	int32			BGMNumber;
-	Image			AdditionImage;						//추가 이미지
-	int32			AddImageTiming;						//추가 이미지 타이밍
+	Image			AdditionImage;						//배경 추가 이미지
+	int32			AddImageTiming;						//배경 추가 이미지 타이밍
+
+	Image			ItemImage;							//아이템 이미지
+	int32			AddItemImageTiming;					//아이템 이미지 등장 타이밍
+	int32			fadeItemImageTiming;				//아이템 이미지 사라지는 타이밍
+
 	SoundEffect		EffectSound;						//효과음
 	int32			EffectSoundTiming;						//효과음 표현 타이밍
 	int32			DialogCount;						//텍스트 갯수
@@ -203,6 +208,13 @@ void GetSceneData(void) {
 			Image_LoadImage(&Scenes[sceneNum].AdditionImage, ParseToAscii(csv.Items[i][columCount]));
 		}
 		columCount += 2;
+
+		//아이템 이미지
+		if (i == 3) {
+			Image_LoadImage(&Scenes[sceneNum].ItemImage, "a.jpg");
+			Scenes[sceneNum].AddItemImageTiming = 1;
+			Scenes[sceneNum].fadeItemImageTiming = 3;
+		}
 
 		//효과음
 		//char* effectSound = ParseToAscii(csv.Items[i][columCount++]);
@@ -680,6 +692,7 @@ typedef struct tagMainScene {
 bool isSceneChanging = false;
 bool showOptions = false;
 bool isBGChanged = false;
+bool showItemImage = false;
 Text* ShowText;
 Text NullText;
 int32 s_CurrentScene = 0;
@@ -748,6 +761,7 @@ void init_main(void)
 	isSceneChanging = false;
 	showOptions = false;
 	isBGChanged = false;
+	showItemImage = false;
 	ShowText = NULL;
 }
 
@@ -788,6 +802,16 @@ void update_main(void)
 						if (data->CurrentTextNumber == data->Scene->AddImageTiming) {
 							isBGChanged = true;
 							ShowText = &NullText;
+						}
+					}
+
+					//아이템 이미지 적용
+					if (data->Scene->AddItemImageTiming > -1) {
+						if (!(data->CurrentTextNumber >= data->Scene->AddItemImageTiming && data->CurrentTextNumber < data->Scene->fadeItemImageTiming)) {
+							showItemImage = false;
+						}
+						else {
+							showItemImage = true;
 						}
 					}
 
@@ -908,6 +932,11 @@ void render_main(void)
 	//배경 이미지 출력
 	Renderer_DrawImage(&data->Scene->BGImage, 0, 0);
 	//Renderer_DrawImage(&TextBGImage, 30, 30);
+
+	//아이템 이미지 출력
+	if (showItemImage) {
+		Renderer_DrawImage(&data->Scene->ItemImage, (WINDOW_WIDTH - data->Scene->ItemImage.Width) / 2, (WINDOW_HEIGHT - data->Scene->ItemImage.Height) / 2 - 100);
+	}
 
 	SDL_Color color1 = { 0, 0, 0, 255 };
 	//텍스트 출력
