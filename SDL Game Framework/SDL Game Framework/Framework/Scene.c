@@ -213,16 +213,6 @@ void GetSceneData(void) {
 		}
 		columCount += 2;
 
-		//아이템 이미지
-		if (i == 3) {
-			Image_LoadImage(&Scenes[sceneNum].ItemImage, "a.jpg");
-			Scenes[sceneNum].AddItemImageTiming = 1;
-			Scenes[sceneNum].FadeItemImageTiming = 3;
-
-			Scenes[sceneNum].AddPoundingItemImageTiming = 2;			
-			Scenes[sceneNum].FadePoundingItemImageTiming = 3;			
-		}
-
 		//효과음
 		//char* effectSound = ParseToAscii(csv.Items[i][columCount++]);
 		int32 effectSoundPoint = ParseToInt(csv.Items[i][columCount + 1]);
@@ -283,6 +273,17 @@ void GetSceneData(void) {
 			}
 			columCount++;
 		}
+
+		//아이템 이미지
+		if (dialogCount >= 4) {
+			Image_LoadImage(&Scenes[sceneNum].ItemImage, "a.jpg");
+			Scenes[sceneNum].AddItemImageTiming = 1;
+			Scenes[sceneNum].FadeItemImageTiming = 4;
+
+			Scenes[sceneNum].AddPoundingItemImageTiming = 2;
+			Scenes[sceneNum].FadePoundingItemImageTiming = 3;
+		}
+
 
 		//옵션 데이터 저장
 		Scenes[sceneNum].OptionCount = ParseToInt(csv.Items[i][columCount++]);
