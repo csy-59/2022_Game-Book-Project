@@ -229,6 +229,7 @@ typedef struct tagScene {
 } SceneStruct;
 
 SceneStruct Scenes[SCENE_COUNT];
+int32 DataCount;
 
 bool isGotData = false;
 void GetSceneData(void) {
@@ -237,6 +238,8 @@ void GetSceneData(void) {
 	CreateCsvFile(&csv, "temp1.csv");
 
 	isGotData = true;
+
+	DataCount = csv.RowCount;
 
 	for (int32 i = 1; i < csv.RowCount;i++) {
 
@@ -344,6 +347,38 @@ void GetSceneData(void) {
 
 	FreeCsvFile(&csv);
 
+}
+
+
+void Scene_Clear(void) {
+	if (isGotData) {
+		for (int32 i = 0; i < DataCount;i++) {
+			//이미지 해제
+			Image_FreeImage(&Scenes[i].BGImage);
+			if (Scenes[i].AddImageTiming > -1) {
+				Image_FreeImage(&Scenes[i].AdditionImage);
+			}
+
+			//오디오 해제
+			Audio_FreeMusic(&Scenes[i].BGM);
+			if (Scenes[i].EffectSoundTiming > -1) {
+				Audio_FreeSoundEffect(&Scenes[i].EffectSound);
+			}
+
+			//텍스트 해제
+			for (int32 j = 0; j < Scenes[i].DialogCount;j++) {
+				int32 k = 0;
+				while (Scenes[i].DialogList[j][k].Length > 0) {
+					Text_FreeText(&Scenes[i].DialogList[j][k]);
+					k++;
+				}
+				Text_FreeText(&Scenes[i].DialogList[j][k]);
+			}
+			for (int32 j = 0; j < Scenes[i].OptionCount;j++) {
+				Text_FreeText(&Scenes[i].OptionList[j]);
+			}
+		}
+	}
 }
 
 #pragma endregion
@@ -675,7 +710,6 @@ void release_intro(void)
 #pragma endregion
 
 #pragma region TempScene
-
 void logOnFinished(void)
 {
 	LogInfo("You can show this log on stopped the music");
@@ -685,47 +719,6 @@ void log2OnFinished(int32 channel)
 {
 	LogInfo("You can show this log on stopped the effect");
 }
-
-/*
-void setScene(int32 indexNum, wchar_t* name, char* bgImageName,
-	char* musicName, char* additionImageName, char* additionImagePos,
-	char* effectSoundName, int32 effectSoundTime, int32 dialogCount,
-	wchar_t** dialog, int32 optionCount, char* optionName,
-	int32* nextSceneNumber, bool isEndingScene) {
-
-	Scenes[indexNum-1].Number = indexNum-1;
-	Scenes[indexNum-1].Name = name;
-	Image_LoadImage(&Scenes[indexNum - 1].BGImage, bgImageName);
-	Scenes[indexNum - 1].BGImage.ScaleY -= 0.065f;
-	Scenes[indexNum - 1].BGImage.ScaleX -= 0.065f;
-	Audio_LoadMusic(&Scenes[indexNum - 1].BGM, musicName);
-	Image_LoadImage(&Scenes[indexNum - 1].AdditionImage, additionImageName);
-	//���� �ʿ�
-	Scenes[indexNum - 1].AddImage_X = 0;
-	Scenes[indexNum - 1].AddImage_Y = 0;
-	Audio_LoadMusic(&Scenes[indexNum - 1].EffectSound, effectSoundName);
-	Scenes[indexNum - 1].EffectSoundTiming = effectSoundTime;
-
-	Scenes[indexNum - 1].DialogCount = dialogCount;
-	int32 i = 0, j = 0;
-	for (int32 i = 0; i < dialogCount;i++) {
-		while (wcslen(&dialog[i][j]) != 0) {
-			Text_CreateText(&Scenes[indexNum-1].DialogList[i][j], )
-		}
-	}
-
-	Text_CreateText(&Scenes[indexNum-1].DialogList[0][0], "d2coding.ttf", 50, L"2031�� 5�� 13�� �������� �������� ���� ", wcslen(L"2031�� 5�� 13�� �������� �������� ���� "));
-	Text_CreateText(&Scenes[indexNum-1].DialogList[0][1], "d2coding.ttf", 50, L"��� ������ũ ���� �Դ�.", wcslen(L"��� ������ũ ���� �Դ�."));
-	Text_CreateText(&Scenes[indexNum-1].DialogList[0][2], "d2coding.ttf", 50, L"", wcslen(L""));
-	Text_CreateText(&Scenes[indexNum-1].DialogList[1][0], "d2coding.ttf", 50, L"�̰��� �������� ���� �����ϴ� ", wcslen(L"�̰��� �������� ���� �����ϴ� "));
-	Text_CreateText(&Scenes[indexNum-1].DialogList[1][1], "d2coding.ttf", 50, L"Ű��ī�䰡 �ֱ� �����̴�.", wcslen(L"Ű��ī�䰡 �ֱ� �����̴�."));
-	Text_CreateText(&Scenes[indexNum-1].DialogList[1][2], "d2coding.ttf", 50, L"", wcslen(L""));
-
-	Scenes[indexNum-1].OptionCount = 0;
-	Scenes[indexNum-1].NextSceneNumberList[0] = 1;
-}
-*/
-
 #pragma endregion
 
 #pragma region MainScene
@@ -827,6 +820,7 @@ void update_main(void)
 					//이펙트 싸운드 적용
 					if (data->Scene->EffectSoundTiming > -1) {
 						if (data->CurrentOptionNumber == data->Scene->EffectSoundTiming) {
+							Audio_SetEffectVolume(&data->Scene->EffectSound, 1.0f);
 							Audio_PlaySoundEffect(&data->Scene->EffectSound, 1);
 						}
 					}
@@ -900,6 +894,7 @@ void update_main(void)
 			if (Input_GetKeyDown(VK_RETURN)) {
 				isSceneChanging = true;
 				Audio_FadeOut(1800);
+				Audio_FadeOutSoundEffect(1800);
 			}
 		}
 	}
@@ -1029,8 +1024,4 @@ void Scene_Change(void)
 	g_Scene.Init();
 
 	s_nextScene = SCENE_NULL;
-
-
-
-
 }
