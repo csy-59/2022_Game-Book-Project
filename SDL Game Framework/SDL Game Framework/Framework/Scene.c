@@ -3,6 +3,7 @@
 
 #include "Framework.h"
 #include "Csv.h"
+#include "Timer.h"
 
 Scene g_Scene;
 
@@ -154,7 +155,10 @@ typedef struct tagScene {
 
 	Image			ItemImage;							//아이템 이미지
 	int32			AddItemImageTiming;					//아이템 이미지 등장 타이밍
-	int32			fadeItemImageTiming;				//아이템 이미지 사라지는 타이밍
+	int32			FadeItemImageTiming;				//아이템 이미지 사라지는 타이밍
+
+	int32			AddPoundingItemImageTiming;					//아이템 이미지 두근 거리는 효과 넣는 타이밍
+	int32			FadePoundingItemImageTiming;					//아이템 이미지 두근 거리는 효과 넣는 타이밍
 
 	SoundEffect		EffectSound;						//효과음
 	int32			EffectSoundTiming;						//효과음 표현 타이밍
@@ -213,7 +217,10 @@ void GetSceneData(void) {
 		if (i == 3) {
 			Image_LoadImage(&Scenes[sceneNum].ItemImage, "a.jpg");
 			Scenes[sceneNum].AddItemImageTiming = 1;
-			Scenes[sceneNum].fadeItemImageTiming = 3;
+			Scenes[sceneNum].FadeItemImageTiming = 3;
+
+			Scenes[sceneNum].AddPoundingItemImageTiming = 2;			
+			Scenes[sceneNum].FadePoundingItemImageTiming = 3;			
 		}
 
 		//효과음
@@ -687,12 +694,15 @@ typedef struct tagMainScene {
 	SDL_Color	OptionColors[MAX_OPTION_COUNT];
 	Image		BlackOutImage;
 	int32		BlackOutAlpha;
+	float		ElapsedTime;
 } MainScene;
 
 bool isSceneChanging = false;
 bool showOptions = false;
 bool isBGChanged = false;
 bool showItemImage = false;
+bool isItemPounding = false;
+bool isItemBigger = false;
 Text* ShowText;
 Text NullText;
 int32 s_CurrentScene = 0;
@@ -716,6 +726,8 @@ void init_main(void)
 	data->BlackOutAlpha = 255;
 	Image_LoadImage(&data->BlackOutImage, "black.jpg");
 	Image_SetAlphaValue(&data->BlackOutImage, data->BlackOutAlpha);
+	//시간 관련
+	data->ElapsedTime = 0.0f;
 	//BGM 관련
 	if (CurrentBGMNumber != data->Scene->BGMNumber) {
 		//ChangeBGM 함수로 묶을 거임
@@ -762,6 +774,8 @@ void init_main(void)
 	showOptions = false;
 	isBGChanged = false;
 	showItemImage = false;
+	isItemPounding = false;
+	isItemBigger = false;
 	ShowText = NULL;
 }
 
@@ -807,7 +821,7 @@ void update_main(void)
 
 					//아이템 이미지 적용
 					if (data->Scene->AddItemImageTiming > -1) {
-						if (!(data->CurrentTextNumber >= data->Scene->AddItemImageTiming && data->CurrentTextNumber < data->Scene->fadeItemImageTiming)) {
+						if (!(data->CurrentTextNumber >= data->Scene->AddItemImageTiming && data->CurrentTextNumber < data->Scene->FadeItemImageTiming)) {
 							showItemImage = false;
 						}
 						else {
@@ -921,6 +935,39 @@ void update_main(void)
 		}
 	}
 
+	//아이템 이미지에 효과 적용(두근두근)
+	if (showItemImage ) {
+		isItemPounding = true;
+		if (data->CurrentTextNumber >= data->Scene->AddPoundingItemImageTiming && 
+			data->CurrentTextNumber < data->Scene->FadePoundingItemImageTiming) {
+			if (!isItemBigger) {
+				if (data->Scene->ItemImage.ScaleX < 1.5f) {
+					data->Scene->ItemImage.ScaleX += 0.15f;
+					data->Scene->ItemImage.ScaleY += 0.15f;
+				}
+				else {
+					isItemBigger = true;
+				}
+			}
+			else {
+				if (data->Scene->ItemImage.ScaleX > 1.0f) {
+					data->Scene->ItemImage.ScaleX -= 0.15f;
+					data->Scene->ItemImage.ScaleY -= 0.15f;
+				}
+				else if (data->Scene->ItemImage.ScaleX <= 1.0f) {
+					if (data->ElapsedTime < 0.5f) {
+						data->ElapsedTime += Timer_GetDeltaTime();
+					}
+					else {
+						data->ElapsedTime = 0.0f;
+						isItemBigger = false;
+					}
+				}
+			}
+		}
+		//아이템 이미지 
+	}
+
 	//암전 효과 적용
 	Image_SetAlphaValue(&data->BlackOutImage, data->BlackOutAlpha);
 }
@@ -935,7 +982,14 @@ void render_main(void)
 
 	//아이템 이미지 출력
 	if (showItemImage) {
-		Renderer_DrawImage(&data->Scene->ItemImage, (WINDOW_WIDTH - data->Scene->ItemImage.Width) / 2, (WINDOW_HEIGHT - data->Scene->ItemImage.Height) / 2 - 100);
+		if (!isItemPounding) {
+			Renderer_DrawImage(&data->Scene->ItemImage, (WINDOW_WIDTH - data->Scene->ItemImage.Width) / 2, (WINDOW_HEIGHT - data->Scene->ItemImage.Height) / 2 - 100);
+		}
+		else {
+			Renderer_DrawImage(&data->Scene->ItemImage, 
+				(WINDOW_WIDTH - data->Scene->ItemImage.Width + data->Scene->ItemImage.Width * (1.0f - data->Scene->ItemImage.ScaleX)) / 2,
+				(WINDOW_HEIGHT - data->Scene->ItemImage.Height + data->Scene->ItemImage.Height * (1.0f - data->Scene->ItemImage.ScaleY)) / 2 - 100);
+		}
 	}
 
 	SDL_Color color1 = { 0, 0, 0, 255 };
