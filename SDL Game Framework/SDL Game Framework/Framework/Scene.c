@@ -760,6 +760,8 @@ void init_main(void)
 	OptionPointImage.ScaleX = 0.02f;
 	OptionPointImage.ScaleY = 0.02f;
 
+	Audio_SetVolume(0.5f);
+
 	for (int32 i = 0; i < data->Scene->OptionCount;i++) {
 		data->OptionColors[i].a = 125;
 		data->OptionColors[i].r = 225;
@@ -767,9 +769,9 @@ void init_main(void)
 		data->OptionColors[i].b = 225;
 	}
 
-	if (data->Scene->EffectSoundTiming > -1) {
-		Audio_PlaySoundEffect(&data->Scene->EffectSound, 1);
-	}
+	//if (data->Scene->EffectSoundTiming > -1) {
+	//	Audio_PlaySoundEffect(&data->Scene->EffectSound, 1);
+	//}
 
 	isSceneChanging = false;
 	showOptions = false;
