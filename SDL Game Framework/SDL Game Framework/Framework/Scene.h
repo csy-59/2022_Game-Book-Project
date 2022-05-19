@@ -44,3 +44,9 @@ void Scene_SetNextScene(ESceneType scene);
 /// </summary>
 /// <param name=""></param>
 void Scene_Change(void);
+
+/// <summary>
+/// 씬 데이터 정리
+/// </summary>
+/// <param name=""></param>
+void Scene_Clear(void);

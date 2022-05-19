@@ -78,6 +78,7 @@ void update(void)
 	g_Scene.Update();
 	if (Input_GetKeyDown(VK_ESCAPE))
 	{
+		Scene_Clear();
 		isGameClose = true;
 	}
 }
