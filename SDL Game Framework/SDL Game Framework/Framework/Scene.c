@@ -235,13 +235,16 @@ bool isGotData = false;
 void GetSceneData(void) {
 	CsvFile csv;
 	memset(&csv, 0, sizeof(CsvFile));
-	CreateCsvFile(&csv, "temp1.csv");
+	CreateCsvFile(&csv, "temp3.csv");
 
 	isGotData = true;
 
 	DataCount = csv.RowCount;
 
 	for (int32 i = 1; i < csv.RowCount;i++) {
+		if (i > SCENE_COUNT) {
+			break;
+		}
 
 		if (csv.Items[i] == NULL) {
 			break;
@@ -957,7 +960,7 @@ void release_main(void)
 	MainScene* data = (MainScene*)g_Scene.Data;
 
 	Image_FreeImage(&data->BlackOutImage);
-	Text_FreeText(&NullText);
+	//Text_FreeText(&NullText);
 	Image_FreeImage(&OptionPointImage);
 	ShowText = 0;
 
