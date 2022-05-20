@@ -131,11 +131,7 @@ void release_title(void)
 }
 #pragma endregion
 
-#define SCENE_COUNT	150
-#define MAX_BG_CHANGE_COUNT 1
-#define MAX_TEXT_SET_COUNT 13
-#define MAX_TEXT_COUNT 20
-#define MAX_OPTION_COUNT 3
+#define TextFont "GmarketSansTTFLight.ttf"
 
 #pragma region SceneData
 //BGM 관련
@@ -144,39 +140,50 @@ enum BGMType {
 	BGM_Titel
 };
 
+#define SCENE_COUNT	150				//총 씬 갯수(csv 최대값보다 조금 더 많게 설정)
+#define MAX_BG_CHANGE_COUNT 1		//배경 이미지 최대로 바뀌는 갯수
+#define MAX_TEXT_SET_COUNT 13		//텍스트 세트가 최대로 바뀌는 갯수
+#define MAX_TEXT_COUNT 10			//각 텍스트 세트에 최대 줄갯수
+#define MAX_OPTION_COUNT 3			//선택지 최대 갯수
+//다른 정보를 받아올 때마다 추가될 가능성 있음
+
 //각 씬의 정보를 담든 structure
 typedef struct tagScene {
-	int32			Number;							//씬 넘버
-	const wchar_t* Name;								//씬 이름
-	Image			BGImage;							//배경화면
-	Music			BGM;							//배경 음악
-	int32			BGMNumber;
-	Image			AdditionBGChangeImages[MAX_BG_CHANGE_COUNT];						//배경 추가 이미지
-	int32			AddImageTimings[MAX_BG_CHANGE_COUNT];						//배경 추가 이미지 타이밍
+	int32			SceneNumber;								//씬 넘버
+	Text			SceneName;									//씬 이름
 
-	Image			ItemImage;							//아이템 이미지
-	int32			AddItemImageTiming;					//아이템 이미지 등장 타이밍
-	int32			FadeItemImageTiming;				//아이템 이미지 사라지는 타이밍
+	Image			BGImage;									//배경화면
+	Image			AdditionBGChangeImages[MAX_BG_CHANGE_COUNT];//배경 추가 이미지 배열
+	int32			AddImageTimings[MAX_BG_CHANGE_COUNT];		//배경 추가 이미지 타이밍
+
+	Music			BGM;										//배경 음악
+	int32			BGMNumber;									//배경 음악 번호 위에 열거형에 정의
+
+	Image			ItemImage;									//아이템 이미지
+	int32			AddItemImageTiming;							//아이템 이미지 등장 타이밍
+	int32			FadeItemImageTiming;						//아이템 이미지 사라지는 타이밍
 
 	int32			AddPoundingItemImageTiming;					//아이템 이미지 두근 거리는 효과 넣는 타이밍
-	int32			FadePoundingItemImageTiming;					//아이템 이미지 두근 거리는 효과 넣는 타이밍
+	int32			FadePoundingItemImageTiming;				//아이템 이미지 두근 거리는 효과 그만하는 타이밍
 
-	int32			PushingX;
-	int32			PushingY;
+	int32			ImagePushingType;							//이미지(화면, 아이템) 밀기 유형(-1: 없음, 0: 배경만, 1: 아이템만)
+	int32			ImagePushingTiming;							//이미지 밀기 시작 타이밍
+	int32			ImagePushingX;								//이미지 민 후 변화한 x값
+	int32			ImagePushingY;								//이미지 민 후 변화한 y값
 
-	int32			ShakingX;
-	int32			ShakingY;
+	int32			ShakingTimging;								//화면 흔들기 타이밍
+	int32			ShakingX;									//화면 흔들기에서 사용할 X값
+	int32			ShakingY;									//화면 흔들기에서 사용할 X값
 
-	SoundEffect		EffectSound;						//효과음
-	int32			EffectSoundTiming;						//효과음 표현 타이밍
-	int32			DialogCount;						//텍스트 갯수
-	Text			DialogList[MAX_TEXT_SET_COUNT][MAX_TEXT_COUNT];						//텍스트 배열
-	int32			OptionCount;						//옵션 갯수
-	//Image			OptionImagesList[MAX_Option_COUNT];					//옵션 이미지 배열
-	Text			OptionList[MAX_OPTION_COUNT];
-	int32			NextSceneNumberList[MAX_OPTION_COUNT];					//옵션 선택시 넘어가는 씬 넘버
-	//int32			NextEndingSceneNumberList[5];				//다음 씬이 엔딩씬일 경우
-	bool			isEndingScene;						//엔딩인지
+	int32			DialogCount;									//텍스트 갯수
+	Text			DialogList[MAX_TEXT_SET_COUNT][MAX_TEXT_COUNT];	//텍스트 배열
+
+	int32			OptionCount;								//옵션 갯수
+	Text			OptionList[MAX_OPTION_COUNT];				//옵션 텍스트 배열
+
+	int32			NextSceneNumberList[MAX_OPTION_COUNT];		//옵션 선택시 넘어가는 씬 넘버
+
+	bool			isShowThisEnding;							//엔딩을 봤는지(엔딩 씬일 경우에만 사용)
 } SceneStruct;
 
 SceneStruct Scenes[SCENE_COUNT];
@@ -186,7 +193,7 @@ bool isGotData = false;
 void GetSceneData(void) {
 	CsvFile csv;
 	memset(&csv, 0, sizeof(CsvFile));
-	CreateCsvFile(&csv, "temp3.csv");
+	CreateCsvFile(&csv, "temp3_1.csv");
 
 	isGotData = true;
 
@@ -206,11 +213,11 @@ void GetSceneData(void) {
 		//씬 번호
 		int32 sceneNum = ParseToInt(csv.Items[i][columCount++]) - 1;
 		printf("%d\n", sceneNum);
-		Scenes[sceneNum].Number = sceneNum;
-		Scenes[sceneNum].Name = ParseToUnicode(csv.Items[i][columCount++]);
+		Scenes[sceneNum].SceneNumber = sceneNum;
+		wchar_t* SceneNameTemp = ParseToUnicode(csv.Items[i][columCount++]);
+		Text_CreateText(&Scenes[sceneNum].SceneName, TextFont, 25, SceneNameTemp, wcslen(SceneNameTemp));
 		Image_LoadImage(&Scenes[sceneNum].BGImage, ParseToAscii(csv.Items[i][columCount++]));
 		Audio_LoadMusic(&Scenes[sceneNum].BGM, ParseToAscii(csv.Items[i][columCount++]));
-		//Audio_SetVolume(0.1f);
 
 		//배경 전환 이미지
 		for (int32 j = 0; j < MAX_BG_CHANGE_COUNT;j++) {
@@ -222,15 +229,7 @@ void GetSceneData(void) {
 			columCount += 2;
 		}
 
-		//효과음
-		//char* effectSound = ParseToAscii(csv.Items[i][columCount++]);
-		//int32 effectSoundPoint = ParseToInt(csv.Items[i][columCount + 1]);
-		//Scenes[sceneNum].EffectSoundTiming = effectSoundPoint;
-		//if (effectSoundPoint > -1) {
-		//	printf("effect: %d\n", effectSoundPoint);
-		//	Audio_LoadSoundEffect(&Scenes[sceneNum].EffectSound, ParseToAscii(csv.Items[i][columCount]));
-		//}
-		//columCount+=2;
+		//효과음에서 사용했던 것. 나중에 수정할 예정
 		columCount+=2;
 
 		//텍스트 데이터 저장
@@ -284,7 +283,7 @@ void GetSceneData(void) {
 
 		//아이템 이미지 예비 입력(텍스트가 4개 이상인 씬에만 이미지 넣음)
 		if (dialogCount >= 4) {
-			Image_LoadImage(&Scenes[sceneNum].ItemImage, "a.jpg");
+			Image_LoadImage(&Scenes[sceneNum].ItemImage, "item_prac.jpg");
 			Scenes[sceneNum].AddItemImageTiming = 1;
 			Scenes[sceneNum].FadeItemImageTiming = 4;
 
@@ -292,6 +291,17 @@ void GetSceneData(void) {
 			Scenes[sceneNum].FadePoundingItemImageTiming = 3;
 		}
 		
+		//화면 밀기 임시 입력(텍스트가 1개면 배경 밀기, 4개 이상이면 아이템 이미지 밀기)
+		if (dialogCount >= 4) {
+			Scenes[sceneNum].ImagePushingType = 1;
+			Scenes[sceneNum].ImagePushingTiming = 3;
+		}
+		else {
+			Scenes[sceneNum].ImagePushingType = 0;
+			Scenes[sceneNum].ImagePushingTiming = 1;
+		}
+		Scenes[sceneNum].ImagePushingX = 0;
+		Scenes[sceneNum].ImagePushingY = 0;
 
 		//옵션 데이터 저장
 		Scenes[sceneNum].OptionCount = ParseToInt(csv.Items[i][columCount++]);
@@ -321,7 +331,14 @@ void GetSceneData(void) {
 			Scenes[sceneNum].BGMNumber = BGM_BPlay;
 		}
 
-		
+		//shaking 임시 입력(선택지가 있으면 2번째 화면을 흔든다.)
+		if (Scenes[sceneNum].OptionCount > 0) {
+			Scenes[sceneNum].ShakingTimging = 2;
+			Scenes[sceneNum].ShakingX = 0;
+			Scenes[sceneNum].ShakingY = 0;
+		}
+
+		Scenes[sceneNum].isShowThisEnding = false;
 	}
 
 	FreeCsvFile(&csv);
@@ -528,7 +545,6 @@ typedef struct IntroSceneData
 	float   Volume;
 
 } IntroSceneData;
-#define TextFont "GmarketSansTTFLight.ttf"
 int count = 1;
 void init_intro(void)
 {
@@ -823,14 +839,15 @@ void update_main(void)
 		else {
 			//키보드 값 입력
 			if (Input_GetKeyDown(VK_SPACE)) {
-
+				//
+				data->Scene->ShakingX = 0;
+				data->Scene->ShakingY = 0;
 				//출력 텍스트 조절
 				if (data->CurrentTextNumber < data->Scene->DialogCount) {
 					ShowText = &data->Scene->DialogList[data->CurrentTextNumber];
 					data->CurrentTextNumber++;
 
 					//배경 이미지 변경
-
 					for (int32 i = CurrentBGChangeNumber; i < MAX_BG_CHANGE_COUNT;i++) {
 						if (data->Scene->AddImageTimings[i] > -1) {
 							if (data->CurrentTextNumber == data->Scene->AddImageTimings[i]) {
@@ -1009,13 +1026,21 @@ void render_main(void)
 
 	//아이템 이미지 출력
 	if (showItemImage) {
+		//if (!isItemPounding) {
+		//	Renderer_DrawImage(&data->Scene->ItemImage, (WINDOW_WIDTH - data->Scene->ItemImage.Width) / 2, (WINDOW_HEIGHT - data->Scene->ItemImage.Height) / 2 - 100);
+		//}
+		//else {
+		//	Renderer_DrawImage(&data->Scene->ItemImage, 
+		//		(WINDOW_WIDTH - data->Scene->ItemImage.Width + data->Scene->ItemImage.Width * (1.0f - data->Scene->ItemImage.ScaleX)) / 2,
+		//		(WINDOW_HEIGHT - data->Scene->ItemImage.Height + data->Scene->ItemImage.Height * (1.0f - data->Scene->ItemImage.ScaleY)) / 2 - 100);
+		//}
 		if (!isItemPounding) {
-			Renderer_DrawImage(&data->Scene->ItemImage, (WINDOW_WIDTH - data->Scene->ItemImage.Width) / 2, (WINDOW_HEIGHT - data->Scene->ItemImage.Height) / 2 - 100);
+			Renderer_DrawImage(&data->Scene->ItemImage, 0, 0);
 		}
 		else {
 			Renderer_DrawImage(&data->Scene->ItemImage, 
-				(WINDOW_WIDTH - data->Scene->ItemImage.Width + data->Scene->ItemImage.Width * (1.0f - data->Scene->ItemImage.ScaleX)) / 2,
-				(WINDOW_HEIGHT - data->Scene->ItemImage.Height + data->Scene->ItemImage.Height * (1.0f - data->Scene->ItemImage.ScaleY)) / 2 - 100);
+				(data->Scene->ItemImage.Width * (1.0f - data->Scene->ItemImage.ScaleX)) / 2,
+				(data->Scene->ItemImage.Height * (1.0f - data->Scene->ItemImage.ScaleY)) / 2 - 100);
 		}
 	}
 
