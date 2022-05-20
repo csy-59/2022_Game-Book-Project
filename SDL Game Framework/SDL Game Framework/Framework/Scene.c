@@ -145,7 +145,6 @@ enum BGMType {
 	BGM_ENDING_SAD,
 	BGM_ZOMBIES,
 	BGM_BSIN,
-	BGM_BEGAUN,
 	BGM_BEGAUN_CUNG,
 	BGM_BEGAUN_UNG,
 	BGM_DUGENG,
@@ -208,7 +207,7 @@ bool isGotData = false;
 void GetSceneData(void) {
 	CsvFile csv;
 	memset(&csv, 0, sizeof(CsvFile));
-	CreateCsvFile(&csv, "temp3.csv");
+	CreateCsvFile(&csv, "temp3_1.csv");
 
 	isGotData = true;
 
@@ -298,18 +297,22 @@ void GetSceneData(void) {
 
 		//아이템 이미지 예비 입력(텍스트가 4개 이상인 씬에만 이미지 넣음)
 		if (dialogCount >= 4) {
-			Image_LoadImage(&Scenes[sceneNum].ItemImage, "item_prac.jpg");
+			Image_LoadImage(&Scenes[sceneNum].ItemImage, "bg_prac.jpg");
 			Scenes[sceneNum].AddItemImageTiming = 1;
 			Scenes[sceneNum].FadeItemImageTiming = 4;
 
-			Scenes[sceneNum].AddPoundingItemImageTiming = 2;
-			Scenes[sceneNum].FadePoundingItemImageTiming = 3;
+			Scenes[sceneNum].AddPoundingItemImageTiming = -1;
+			Scenes[sceneNum].FadePoundingItemImageTiming = -1;
+		}
+		else {
+			Scenes[sceneNum].AddItemImageTiming = -1;
+			Scenes[sceneNum].AddPoundingItemImageTiming = -1;
 		}
 		
 		//화면 밀기 임시 입력(텍스트가 1개면 배경 밀기, 4개 이상이면 아이템 이미지 밀기)
 		if (dialogCount >= 4) {
 			Scenes[sceneNum].ImagePushingType = 1;
-			Scenes[sceneNum].ImagePushingTiming = 3;
+			Scenes[sceneNum].ImagePushingTiming = 1;
 		}
 		else {
 			Scenes[sceneNum].ImagePushingType = 0;
@@ -349,9 +352,9 @@ void GetSceneData(void) {
 		//shaking 임시 입력(선택지가 있으면 2번째 화면을 흔든다.)
 		if (Scenes[sceneNum].OptionCount > 0) {
 			Scenes[sceneNum].ShakingTimging = 2;
-			Scenes[sceneNum].ShakingX = 0;
-			Scenes[sceneNum].ShakingY = 0;
 		}
+		Scenes[sceneNum].ShakingX = 0;
+		Scenes[sceneNum].ShakingY = 0;
 
 		Scenes[sceneNum].isShowedThisEnding = false;
 	}
@@ -742,6 +745,7 @@ typedef struct tagMainScene {
 	int32		CurrentOptionNumber;
 	int32		CurrentTextNumber;
 	SDL_Color	OptionColors[MAX_OPTION_COUNT];
+	Image*		CurrentBGImage;
 	Image		BlackOutImage;
 	int32		BlackOutAlpha;
 	float		ElapsedTime;
@@ -753,6 +757,7 @@ bool isBGChanged = false;
 bool showItemImage = false;
 bool isItemPounding = false;
 bool isItemBigger = false;
+bool isImagePushing = false;
 Text* ShowText;
 Text NullText;
 int32 s_CurrentScene = 0;
@@ -796,9 +801,6 @@ void ChangeBGM(int32 BGMNum) {
 		break;
 	case BGM_BSIN:
 		Audio_LoadMusic(&CurrentBGM, "Bsin.mp3");
-		break;
-	case BGM_BEGAUN:
-		Audio_LoadMusic(&CurrentBGM, "Begaun.mp3");
 		break;
 	case BGM_BEGAUN_CUNG:
 		Audio_LoadMusic(&CurrentBGM, "Begaun_cungcung.mp3");
@@ -859,8 +861,10 @@ void init_main(void)
 	OptionPointImage.ScaleX = 0.02f;
 	OptionPointImage.ScaleY = 0.02f;
 
-	Audio_SetVolume(0.5f);
+	//현재 보여주는 bg 이미지
+	data->CurrentBGImage = &data->Scene->BGImage;
 
+	//선택지 텍스트 요소 값
 	for (int32 i = 0; i < data->Scene->OptionCount;i++) {
 		data->OptionColors[i].a = 125;
 		data->OptionColors[i].r = 225;
@@ -868,16 +872,13 @@ void init_main(void)
 		data->OptionColors[i].b = 225;
 	}
 
-	//if (data->Scene->EffectSoundTiming > -1) {
-	//	Audio_PlaySoundEffect(&data->Scene->EffectSound, 1);
-	//}
-
 	isSceneChanging = false;
 	showOptions = false;
 	isBGChanged = false;
 	showItemImage = false;
 	isItemPounding = false;
 	isItemBigger = false;
+	isImagePushing = false;
 	ShowText = NULL;
 	CurrentBGChangeNumber = 0;
 }
@@ -895,8 +896,8 @@ void update_main(void)
 			}
 			else {
 				isBGChanged = false;
-				data->Scene->BGImage = data->Scene->AdditionBGChangeImages[CurrentBGChangeNumber];
-				ShowText = &data->Scene->DialogList[data->CurrentTextNumber-1];
+				data->CurrentBGImage = &data->Scene->AdditionBGChangeImages[CurrentBGChangeNumber];
+				ShowText = &data->Scene->DialogList[data->CurrentTextNumber - 1];
 				TextColor.a = 0;
 			}
 		}
@@ -908,13 +909,12 @@ void update_main(void)
 		else {
 			//키보드 값 입력
 			if (Input_GetKeyDown(VK_SPACE)) {
-				//
-				data->Scene->ShakingX = 0;
-				data->Scene->ShakingY = 0;
 				//출력 텍스트 조절
 				if (data->CurrentTextNumber < data->Scene->DialogCount) {
 					ShowText = &data->Scene->DialogList[data->CurrentTextNumber];
 					data->CurrentTextNumber++;
+					data->Scene->ShakingX = 0;
+					data->Scene->ShakingY = 0;
 
 					//배경 이미지 변경
 					for (int32 i = CurrentBGChangeNumber; i < MAX_BG_CHANGE_COUNT;i++) {
@@ -924,7 +924,8 @@ void update_main(void)
 								ShowText = &NullText;
 								CurrentBGChangeNumber = i;
 								data->Scene->ImagePushingX = 0;
-								data->Scene->ImagePushingX = 0;
+								data->Scene->ImagePushingY = 0;
+								isImagePushing = false;
 								break;
 							}
 						}
@@ -944,9 +945,17 @@ void update_main(void)
 						}
 					}
 
+					//배경 밀어내는 효과 적용
+					if (data->Scene->ImagePushingTiming > -1) { 
+
+						if (data->CurrentTextNumber == data->Scene->ImagePushingTiming) {
+							isImagePushing = true;
+						}
+					}
+
 					TextColor.a = 0;
 				}
-				if (data->CurrentTextNumber >= data->Scene->DialogCount - 1 && data->Scene->OptionCount <= 0) {
+				if (data->CurrentTextNumber >= data->Scene->DialogCount && data->Scene->OptionCount <= 0) {
 					isSceneChanging = true;
 					s_CurrentScene = data->Scene->NextSceneNumberList[data->CurrentOptionNumber];
 					if (CurrentBGMNumber != Scenes[s_CurrentScene].BGMNumber) {
@@ -1023,6 +1032,7 @@ void update_main(void)
 		}
 	}
 
+	//씬 전환 처리(페이드 인/아웃)
 	else {
 		if (data->BlackOutAlpha < 255) {
 			data->BlackOutAlpha += 5;
@@ -1043,7 +1053,7 @@ void update_main(void)
 	}
 
 	//아이템 이미지에 효과 적용(두근두근)
-	if (showItemImage ) {
+	if (showItemImage) {
 		isItemPounding = true;
 		if (data->CurrentTextNumber >= data->Scene->AddPoundingItemImageTiming && 
 			data->CurrentTextNumber < data->Scene->FadePoundingItemImageTiming) {
@@ -1072,7 +1082,45 @@ void update_main(void)
 				}
 			}
 		}
-		//아이템 이미지 
+		else {
+			isItemPounding = false;
+			data->Scene->ItemImage.ScaleX = 1.0f;
+			data->Scene->ItemImage.ScaleY = 1.0f;
+		}
+	}
+
+	//이미지 밀어올리기 효과 적용
+	if (isImagePushing) {
+		//특정 씬에서는 좌우로
+		if (s_CurrentScene == 1);
+
+		//배경 이동
+		if (data->Scene->ImagePushingType == 0) {
+			//아직 끝으로 가지 않았을 경우
+			if (data->Scene->ImagePushingY - 50 > (data->CurrentBGImage->Height - WINDOW_HEIGHT) * -1) {
+				data->Scene->ImagePushingY -= 50;
+			}
+			//끝에 다다랐을 때
+			else {
+				isImagePushing = false;
+			}
+		}
+		//아이템 이동
+		else if(data->Scene->ImagePushingType == 1) {
+			//아직 끝으로 가지 않았을 경우
+			if (data->Scene->ImagePushingY > (data->Scene->ItemImage.Height + WINDOW_HEIGHT) * -1) {
+ 				data->Scene->ImagePushingY -= 50;
+			}
+			//끝에 다다랐을 때
+			else {
+				isImagePushing = false;
+			}
+		}
+		//이상한 값
+		else {
+			printf("ERROR!! WORNG PUSHING TYPE\n");
+			isImagePushing = false;
+		}
 	}
 
 	//암전 효과 적용
@@ -1080,12 +1128,16 @@ void update_main(void)
 }
 
 void render_main(void)
-{
+ {
 	MainScene* data = (MainScene*)g_Scene.Data;
 
 	//배경 이미지 출력
-	Renderer_DrawImage(&data->Scene->BGImage, 0, 0);
-	//Renderer_DrawImage(&TextBGImage, 30, 30);
+	if (data->Scene->ImagePushingType != 0) {
+		Renderer_DrawImage(data->CurrentBGImage, 0, 0);
+	}
+	else {
+		Renderer_DrawImage(data->CurrentBGImage, data->Scene->ImagePushingX, data->Scene->ImagePushingY);
+	}
 
 	//아이템 이미지 출력
 	if (showItemImage) {
@@ -1097,13 +1149,20 @@ void render_main(void)
 		//		(WINDOW_WIDTH - data->Scene->ItemImage.Width + data->Scene->ItemImage.Width * (1.0f - data->Scene->ItemImage.ScaleX)) / 2,
 		//		(WINDOW_HEIGHT - data->Scene->ItemImage.Height + data->Scene->ItemImage.Height * (1.0f - data->Scene->ItemImage.ScaleY)) / 2 - 100);
 		//}
-		if (!isItemPounding) {
+		
+		//두근 거리는 효과
+		if (isItemPounding) {
+			Renderer_DrawImage(&data->Scene->ItemImage,
+				(data->Scene->ItemImage.Width * (1.0f - data->Scene->ItemImage.ScaleX)) / 2,
+				(data->Scene->ItemImage.Height * (1.0f - data->Scene->ItemImage.ScaleY)) / 2 - 100);
+		}
+		//이미지 밀어 올리기
+		else if (data->Scene->ImagePushingType != 1) {
 			Renderer_DrawImage(&data->Scene->ItemImage, 0, 0);
 		}
 		else {
-			Renderer_DrawImage(&data->Scene->ItemImage, 
-				(data->Scene->ItemImage.Width * (1.0f - data->Scene->ItemImage.ScaleX)) / 2,
-				(data->Scene->ItemImage.Height * (1.0f - data->Scene->ItemImage.ScaleY)) / 2 - 100);
+			Renderer_DrawImage(&data->Scene->ItemImage,
+				data->Scene->ImagePushingX, data->Scene->ImagePushingY);
 		}
 	}
 
@@ -1112,9 +1171,7 @@ void render_main(void)
 	if (ShowText != NULL && !isBGChanged) {
 		int32 i = 0;
 		while (ShowText[i].Length != 0) {
-			//Renderer_DrawTextBlended(&ShowText[i], 250, 830 + i * 40, TextColor);
 			Renderer_DrawTextShaded(&ShowText[i], 250, 830 + i * 40, TextColor, color1);
-			//Renderer_DrawTextSolid(&ShowText[i], 250, 830 + i * 40, TextColor);
 			i++;
 		}
 	}
