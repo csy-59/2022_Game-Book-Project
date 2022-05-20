@@ -4,6 +4,7 @@
 #include "Framework.h"
 #include "Csv.h"
 #include "Timer.h"
+#include "Random.h"
 
 Scene g_Scene;
 
@@ -173,7 +174,7 @@ typedef struct tagScene {
 
 	int32			ShakingTimging;								//화면 흔들기 타이밍
 	int32			ShakingX;									//화면 흔들기에서 사용할 X값
-	int32			ShakingY;									//화면 흔들기에서 사용할 X값
+	int32			ShakingY;									//화면 흔들기에서 사용할 Y값
 
 	int32			DialogCount;									//텍스트 갯수
 	Text			DialogList[MAX_TEXT_SET_COUNT][MAX_TEXT_COUNT];	//텍스트 배열
@@ -193,7 +194,7 @@ bool isGotData = false;
 void GetSceneData(void) {
 	CsvFile csv;
 	memset(&csv, 0, sizeof(CsvFile));
-	CreateCsvFile(&csv, "temp3_1.csv");
+	CreateCsvFile(&csv, "temp3.csv");
 
 	isGotData = true;
 
@@ -331,13 +332,17 @@ void GetSceneData(void) {
 			Scenes[sceneNum].BGMNumber = BGM_BPlay;
 		}
 
+		Scenes[sceneNum].ShakingX = 0;
+		Scenes[sceneNum].ShakingY = 0;
+		
+		
 		//shaking 임시 입력(선택지가 있으면 2번째 화면을 흔든다.)
-		if (Scenes[sceneNum].OptionCount > 0) {
-			Scenes[sceneNum].ShakingTimging = 2;
-			Scenes[sceneNum].ShakingX = 0;
-			Scenes[sceneNum].ShakingY = 0;
+		Scenes[sceneNum].ShakingTimging = -1;
+		if (Scenes[sceneNum].OptionCount > 0) 
+		{
+ 			Scenes[sceneNum].ShakingTimging = 2;
 		}
-
+		
 		Scenes[sceneNum].isShowThisEnding = false;
 	}
 
@@ -726,6 +731,7 @@ typedef struct tagMainScene {
 	Image		BlackOutImage;
 	int32		BlackOutAlpha;
 	float		ElapsedTime;
+	float       ElapsedTimeShaking;
 } MainScene;
 
 bool isSceneChanging = false;
@@ -734,6 +740,8 @@ bool isBGChanged = false;
 bool showItemImage = false;
 bool isItemPounding = false;
 bool isItemBigger = false;
+bool isShaking = false;
+bool isEnter = true;
 Text* ShowText;
 Text NullText;
 int32 s_CurrentScene = 0;
@@ -761,6 +769,7 @@ void init_main(void)
 	Image_SetAlphaValue(&data->BlackOutImage, data->BlackOutAlpha);
 	//시간 관련
 	data->ElapsedTime = 0.0f;
+	data->ElapsedTimeShaking = 0.0f;
 	//BGM 관련
 	if (CurrentBGMNumber != data->Scene->BGMNumber) {
 		//ChangeBGM 함수로 묶을 거임
@@ -809,6 +818,7 @@ void init_main(void)
 	showItemImage = false;
 	isItemPounding = false;
 	isItemBigger = false;
+	isShaking = false;
 	ShowText = NULL;
 	CurrentBGChangeNumber = 0;
 }
@@ -838,7 +848,7 @@ void update_main(void)
 		//이외 입력 정상 받음
 		else {
 			//키보드 값 입력
-			if (Input_GetKeyDown(VK_SPACE)) {
+			if (Input_GetKeyDown(VK_SPACE) && isEnter == true) {
 				//
 				data->Scene->ShakingX = 0;
 				data->Scene->ShakingY = 0;
@@ -1009,19 +1019,48 @@ void update_main(void)
 				}
 			}
 		}
-		//아이템 이미지 
+		
 	}
+	//이미지가 흔들리는 효과
+
+		if (data->Scene->ShakingTimging == data->CurrentTextNumber && data->BlackOutAlpha == 0)
+		{
+			if (!isShaking)
+			{
+				data->ElapsedTimeShaking += Timer_GetDeltaTime();
+				if (data->ElapsedTimeShaking < 10.0f && data->ElapsedTimeShaking > 0.05f)
+				{
+					data->Scene->ShakingX = Random_GetNumberFromRange(-100, 100);
+					data->Scene->ShakingY = Random_GetNumberFromRange(-100, 100);
+					isEnter = false;
+				}
+				else if (data->ElapsedTimeShaking >= 10.0f)
+				{
+					data->ElapsedTimeShaking = 0.0f;
+
+					data->Scene->ShakingX = 0;
+					data->Scene->ShakingY = 0;
+					isShaking = true;
+					isEnter = true;
+				}
+			}
+		}
+	
+
+
+
 
 	//암전 효과 적용
 	Image_SetAlphaValue(&data->BlackOutImage, data->BlackOutAlpha);
 }
+int TEXT_X = 250;
 
 void render_main(void)
 {
 	MainScene* data = (MainScene*)g_Scene.Data;
 
 	//배경 이미지 출력
-	Renderer_DrawImage(&data->Scene->BGImage, 0, 0);
+	Renderer_DrawImage(&data->Scene->BGImage, 0 + data->Scene->ShakingX, 0 + data->Scene->ShakingY);
 	//Renderer_DrawImage(&TextBGImage, 30, 30);
 
 	//아이템 이미지 출력
@@ -1035,7 +1074,7 @@ void render_main(void)
 		//		(WINDOW_HEIGHT - data->Scene->ItemImage.Height + data->Scene->ItemImage.Height * (1.0f - data->Scene->ItemImage.ScaleY)) / 2 - 100);
 		//}
 		if (!isItemPounding) {
-			Renderer_DrawImage(&data->Scene->ItemImage, 0, 0);
+			Renderer_DrawImage(&data->Scene->ItemImage, 0 + data->Scene->ShakingX, 0 + data->Scene->ShakingY);
 		}
 		else {
 			Renderer_DrawImage(&data->Scene->ItemImage, 
@@ -1050,7 +1089,7 @@ void render_main(void)
 		int32 i = 0;
 		while (ShowText[i].Length != 0) {
 			//Renderer_DrawTextBlended(&ShowText[i], 250, 830 + i * 40, TextColor);
-			Renderer_DrawTextShaded(&ShowText[i], 250, 830 + i * 40, TextColor, color1);
+			Renderer_DrawTextShaded(&ShowText[i], 250 + data->Scene->ShakingX, 830 + i * 40 + data->Scene->ShakingY, TextColor, color1);
 			//Renderer_DrawTextSolid(&ShowText[i], 250, 830 + i * 40, TextColor);
 			i++;
 		}
@@ -1062,7 +1101,7 @@ void render_main(void)
 			Renderer_DrawTextShaded(&data->Scene->OptionList[i], 250, 895 + i * 40, data->OptionColors[i], color1);
 			Renderer_DrawTextSolid(&data->Scene->OptionList[i], 250, 895 + i * 40, data->OptionColors[i]);
 		}
-		Renderer_DrawImage(&OptionPointImage, 210, 895 + data->CurrentOptionNumber * 40);
+		Renderer_DrawImage(&OptionPointImage, 210 + data->Scene->ShakingX, 895 + data->CurrentOptionNumber * 40 + data->Scene->ShakingY);
 	}
 
 	//페이드 인 페이드 아웃 효과를 위한 검은색 배경

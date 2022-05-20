@@ -3,7 +3,7 @@
 
 // â�� ũ��
 #define WINDOW_WIDTH	1711
-#define WINDOW_HEIGHT	1080
+#define WINDOW_HEIGHT	1080  
 
 // �ּ� ���
 #define IMAGE_DIRECTORY	"Asset/Image"
