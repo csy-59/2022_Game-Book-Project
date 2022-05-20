@@ -136,8 +136,23 @@ void release_title(void)
 #pragma region SceneData
 //BGM 관련
 enum BGMType {
-	BGM_BPlay,
-	BGM_Titel
+	BGM_TITLE,
+	BGM_MA_E2,
+	BGM_IPARK_START,
+	BGM_GAME_CENTER,
+	BGM_3ED,
+	BGM_ENDING_HAPPY,
+	BGM_ENDING_SAD,
+	BGM_ZOMBIES,
+	BGM_BSIN,
+	BGM_BEGAUN,
+	BGM_BEGAUN_CUNG,
+	BGM_BEGAUN_UNG,
+	BGM_DUGENG,
+	BGM_KIZUNGUNG,
+	BGM_IPARK_START_DRUM,
+	BGM_IPARK_START_RAT,
+	BGM_IPARK_SHEEEIC
 };
 
 #define SCENE_COUNT	150				//총 씬 갯수(csv 최대값보다 조금 더 많게 설정)
@@ -325,10 +340,10 @@ void GetSceneData(void) {
 
 		//bgm 예비 입력(선택지가 있으면 타이틀 bgm이 들린다.)
 		if (Scenes[sceneNum].OptionCount > 0) {
-			Scenes[sceneNum].BGMNumber = BGM_Titel;
+			Scenes[sceneNum].BGMNumber = BGM_TITLE;
 		}
 		else {
-			Scenes[sceneNum].BGMNumber = BGM_BPlay;
+			Scenes[sceneNum].BGMNumber = BGM_3ED;
 		}
 
 		//shaking 임시 입력(선택지가 있으면 2번째 화면을 흔든다.)
@@ -744,8 +759,73 @@ int32 s_CurrentScene = 0;
 SDL_Color TextColor = { 255,255,255,0 };
 Image OptionPointImage;
 Music CurrentBGM;
-int32 CurrentBGMNumber = -1;
+int32 CurrentBGMNumber = BGM_TITLE;
 int32 CurrentBGChangeNumber = 0;
+
+void ChangeBGM(int32 BGMNum) {
+	if (CurrentBGMNumber == BGMNum) {
+		return;
+	}
+
+	Audio_FreeMusic(&CurrentBGM);
+	CurrentBGMNumber = BGMNum;
+	switch (BGMNum) {
+	case BGM_TITLE:
+		Audio_LoadMusic(&CurrentBGM, "title.mp3");
+		break;
+	case BGM_MA_E2:
+		Audio_LoadMusic(&CurrentBGM, "MA_E2YOU_DeadAreComing_Main.mp3");
+		break;
+	case BGM_IPARK_START:
+		Audio_LoadMusic(&CurrentBGM, "ipark_start.mp3");
+		break;
+	case BGM_GAME_CENTER:
+		Audio_LoadMusic(&CurrentBGM, "GAME_CENTER.mp3");
+		break;
+	case BGM_3ED:
+		Audio_LoadMusic(&CurrentBGM, "3.Ed-Lad.in.mp3");
+		break;
+	case BGM_ENDING_HAPPY:
+		Audio_LoadMusic(&CurrentBGM, "Ending.happy.mp3");
+		break;
+	case BGM_ENDING_SAD:
+		Audio_LoadMusic(&CurrentBGM, "Ending.SAD.mp3");
+		break;
+	case BGM_ZOMBIES:
+		Audio_LoadMusic(&CurrentBGM, "zombies are coming.mp3");
+		break;
+	case BGM_BSIN:
+		Audio_LoadMusic(&CurrentBGM, "Bsin.mp3");
+		break;
+	case BGM_BEGAUN:
+		Audio_LoadMusic(&CurrentBGM, "Begaun.mp3");
+		break;
+	case BGM_BEGAUN_CUNG:
+		Audio_LoadMusic(&CurrentBGM, "Begaun_cungcung.mp3");
+		break;
+	case BGM_BEGAUN_UNG:
+		Audio_LoadMusic(&CurrentBGM, "Begaun_ungsung.mp3");
+		break;
+	case BGM_DUGENG:
+		Audio_LoadMusic(&CurrentBGM, "dugengdugen.mp3");
+		break;
+	case BGM_KIZUNGUNG:
+		Audio_LoadMusic(&CurrentBGM, "kizungung.mp3");
+		break;
+	case BGM_IPARK_START_DRUM:
+		Audio_LoadMusic(&CurrentBGM, "ipark_start_drum.mp3");
+		break;
+	case BGM_IPARK_START_RAT:
+		Audio_LoadMusic(&CurrentBGM, "ipark_start_rat.mp3");
+		break;
+	case BGM_IPARK_SHEEEIC:
+		Audio_LoadMusic(&CurrentBGM, "sheeeeeic.mp3");
+		break;
+	default:
+		printf("ERROR!!! WORNG BGM NUMBER\n");
+		break;
+	}
+}
 
 void init_main(void)
 {
@@ -767,23 +847,8 @@ void init_main(void)
 	data->ElapsedTime = 0.0f;
 	//BGM 관련
 	if (CurrentBGMNumber != data->Scene->BGMNumber) {
-		//ChangeBGM 함수로 묶을 거임
-		Audio_FreeMusic(&CurrentBGM);
-		switch (data->Scene->BGMNumber) {
-		case BGM_BPlay:
-			Audio_LoadMusic(&CurrentBGM, "B-play.mp3");
-			break;
-		case BGM_Titel:
-			Audio_LoadMusic(&CurrentBGM, "title.mp3");
-			break;
-		}
-		//CurrentBGM.Music = data->Scene->BGM.Music;
-		CurrentBGMNumber = data->Scene->BGMNumber;
+		ChangeBGM(data->Scene->BGMNumber);
 		Audio_PlayFadeIn(&CurrentBGM, INFINITY_LOOP, 2000);
-	}
-	else if (CurrentBGMNumber == -1) {
-		CurrentBGMNumber = 0;
-		Audio_LoadMusic(&data->Scene->BGM, "B-play.mp3");
 	}
 
 	//Audio_PlayFadeIn(&data->Scene->BGM, INFINITY_LOOP, 2000);
@@ -858,6 +923,8 @@ void update_main(void)
 								isBGChanged = true;
 								ShowText = &NullText;
 								CurrentBGChangeNumber = i;
+								data->Scene->ImagePushingX = 0;
+								data->Scene->ImagePushingX = 0;
 								break;
 							}
 						}
@@ -876,14 +943,6 @@ void update_main(void)
 							showItemImage = true;
 						}
 					}
-
-					//이펙트 싸운드 적용
-					//f (data->Scene->EffectSoundTiming > -1) {
-					//	if (data->CurrentOptionNumber == data->Scene->EffectSoundTiming) {
-					//		Audio_SetEffectVolume(&data->Scene->EffectSound, 1.0f);
-					//		Audio_PlaySoundEffect(&data->Scene->EffectSound, 1);
-					//	}
-					//
 
 					TextColor.a = 0;
 				}
@@ -959,8 +1018,7 @@ void update_main(void)
 				s_CurrentScene = data->Scene->NextSceneNumberList[data->CurrentOptionNumber];
 				if (CurrentBGMNumber != Scenes[s_CurrentScene].BGMNumber) {
 					Audio_FadeOut(1800);
-				}
-				Audio_FadeOutSoundEffect(1800);				
+				}			
 			}
 		}
 	}
