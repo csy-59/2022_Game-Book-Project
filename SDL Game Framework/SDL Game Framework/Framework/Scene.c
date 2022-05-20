@@ -154,10 +154,10 @@ enum BGMType {
 	BGM_IPARK_SHEEEIC
 };
 
-#define SCENE_COUNT	150				//총 씬 갯수(csv 최대값보다 조금 더 많게 설정)
-#define MAX_BG_CHANGE_COUNT 1		//배경 이미지 최대로 바뀌는 갯수
+#define SCENE_COUNT	21				//총 씬 갯수(csv 최대값보다 조금 더 많게 설정)
+#define MAX_BG_CHANGE_COUNT 4		//배경 이미지 최대로 바뀌는 갯수
 #define MAX_TEXT_SET_COUNT 13		//텍스트 세트가 최대로 바뀌는 갯수
-#define MAX_TEXT_COUNT 10			//각 텍스트 세트에 최대 줄갯수
+#define MAX_TEXT_COUNT 7			//각 텍스트 세트에 최대 줄갯수
 #define MAX_OPTION_COUNT 3			//선택지 최대 갯수
 //다른 정보를 받아올 때마다 추가될 가능성 있음
 
@@ -207,7 +207,7 @@ bool isGotData = false;
 void GetSceneData(void) {
 	CsvFile csv;
 	memset(&csv, 0, sizeof(CsvFile));
-	CreateCsvFile(&csv, "temp3_1.csv");
+	CreateCsvFile(&csv, "csv_ver3_temp.csv");
 
 	isGotData = true;
 
@@ -226,12 +226,15 @@ void GetSceneData(void) {
 
 		//씬 번호
 		int32 sceneNum = ParseToInt(csv.Items[i][columCount++]) - 1;
-		printf("%d\n", sceneNum);
 		Scenes[sceneNum].SceneNumber = sceneNum;
+		//씬 이름
 		wchar_t* SceneNameTemp = ParseToUnicode(csv.Items[i][columCount++]);
 		Text_CreateText(&Scenes[sceneNum].SceneName, TextFont, 25, SceneNameTemp, wcslen(SceneNameTemp));
+		//bg Image
 		Image_LoadImage(&Scenes[sceneNum].BGImage, ParseToAscii(csv.Items[i][columCount++]));
-		Audio_LoadMusic(&Scenes[sceneNum].BGM, ParseToAscii(csv.Items[i][columCount++]));
+		//bgm
+		//Audio_LoadMusic(&Scenes[sceneNum].BGM, ParseToAscii(csv.Items[i][columCount++]));
+		Scenes[sceneNum].BGMNumber = ParseToInt(csv.Items[i][columCount++]);
 
 		//배경 전환 이미지
 		for (int32 j = 0; j < MAX_BG_CHANGE_COUNT;j++) {
@@ -243,8 +246,36 @@ void GetSceneData(void) {
 			columCount += 2;
 		}
 
-		//효과음에서 사용했던 것. 나중에 수정할 예정
-		columCount+=2;
+		//아이템 이미지
+		int32 itemImagePoint = ParseToInt(csv.Items[i][columCount + 1]);
+		Scenes[sceneNum].AddItemImageTiming = itemImagePoint;
+		if (itemImagePoint > -1) {
+			Image_LoadImage(&Scenes[sceneNum].ItemImage, ParseToAscii(csv.Items[i][columCount]));
+			Scenes[sceneNum].FadeItemImageTiming = ParseToInt(csv.Items[i][columCount + 2]);
+		}
+		columCount += 3;
+
+		//아이템 두근두근 효과
+		int32 poundingPoint = ParseToInt(csv.Items[i][columCount++]);
+		Scenes[sceneNum].AddPoundingItemImageTiming = poundingPoint;
+		if (poundingPoint > -1) {
+			Scenes[sceneNum].FadePoundingItemImageTiming = ParseToInt(csv.Items[i][columCount]);
+		}
+		columCount++;
+
+		//화면 흔들기 효과
+		Scenes[sceneNum].ShakingTimging = ParseToInt(csv.Items[i][columCount++]);
+		Scenes[sceneNum].ShakingX = 0;
+		Scenes[sceneNum].ShakingY = 0;
+
+		//화면 밀기 효과(수정 요함!)
+		//Scenes[sceneNum].ImagePushingTiming = ParseToInt(csv.Items[i][columCount++]);
+		//Scenes[sceneNum].ImagePushingType
+		Scenes[sceneNum].ImagePushingType = -1;
+		Scenes[sceneNum].ImagePushingTiming = -1;
+		Scenes[sceneNum].ImagePushingX = 0;
+		Scenes[sceneNum].ImagePushingY = 0;
+		columCount += 2;
 
 		//텍스트 데이터 저장
 		int32 dialogCount = ParseToInt(csv.Items[i][columCount++]);
@@ -295,32 +326,6 @@ void GetSceneData(void) {
 			columCount++;
 		}
 
-		//아이템 이미지 예비 입력(텍스트가 4개 이상인 씬에만 이미지 넣음)
-		if (dialogCount >= 4) {
-			Image_LoadImage(&Scenes[sceneNum].ItemImage, "bg_prac.jpg");
-			Scenes[sceneNum].AddItemImageTiming = 1;
-			Scenes[sceneNum].FadeItemImageTiming = 4;
-
-			Scenes[sceneNum].AddPoundingItemImageTiming = -1;
-			Scenes[sceneNum].FadePoundingItemImageTiming = -1;
-		}
-		else {
-			Scenes[sceneNum].AddItemImageTiming = -1;
-			Scenes[sceneNum].AddPoundingItemImageTiming = -1;
-		}
-		
-		//화면 밀기 임시 입력(텍스트가 1개면 배경 밀기, 4개 이상이면 아이템 이미지 밀기)
-		if (dialogCount >= 4) {
-			Scenes[sceneNum].ImagePushingType = 1;
-			Scenes[sceneNum].ImagePushingTiming = 1;
-		}
-		else {
-			Scenes[sceneNum].ImagePushingType = 0;
-			Scenes[sceneNum].ImagePushingTiming = 1;
-		}
-		Scenes[sceneNum].ImagePushingX = 0;
-		Scenes[sceneNum].ImagePushingY = 0;
-
 		//옵션 데이터 저장
 		Scenes[sceneNum].OptionCount = ParseToInt(csv.Items[i][columCount++]);
 
@@ -341,22 +346,9 @@ void GetSceneData(void) {
 			Scenes[sceneNum].NextSceneNumberList[0] = ParseToInt(csv.Items[i][++columCount]) - 1;
 		}
 
-		//bgm 예비 입력(선택지가 있으면 타이틀 bgm이 들린다.)
-		if (Scenes[sceneNum].OptionCount > 0) {
-			Scenes[sceneNum].BGMNumber = BGM_TITLE;
-		}
-		else {
-			Scenes[sceneNum].BGMNumber = BGM_3ED;
-		}
-
-		//shaking 임시 입력(선택지가 있으면 2번째 화면을 흔든다.)
-		if (Scenes[sceneNum].OptionCount > 0) {
-			Scenes[sceneNum].ShakingTimging = 2;
-		}
-		Scenes[sceneNum].ShakingX = 0;
-		Scenes[sceneNum].ShakingY = 0;
-
 		Scenes[sceneNum].isShowedThisEnding = false;
+			Scenes[sceneNum].ShakingTimging = 2;
+		
 	}
 
 	FreeCsvFile(&csv);
@@ -1039,6 +1031,14 @@ void update_main(void)
 		}
 		else {
 			isSceneChanging = false;
+
+			data->Scene->ImagePushingX = 0;
+			data->Scene->ImagePushingY = 0;
+
+			data->Scene->ShakingX = 0;
+			data->Scene->ShakingY = 0;
+
+			s_CurrentScene = data->Scene->NextSceneNumberList[data->CurrentOptionNumber];
 			//다음 씬이 -1, 즉 엔딩일때는 타이틀로 돌아감. 아니면 다음 씬을 구성
 			if (s_CurrentScene != -2) {
 				s_CurrentScene = data->Scene->NextSceneNumberList[data->CurrentOptionNumber];
@@ -1171,7 +1171,7 @@ void render_main(void)
 	if (ShowText != NULL && !isBGChanged) {
 		int32 i = 0;
 		while (ShowText[i].Length != 0) {
-			Renderer_DrawTextShaded(&ShowText[i], 250, 830 + i * 40, TextColor, color1);
+			Renderer_DrawTextShaded(&ShowText[i], 250, 645 + i * 40, TextColor, color1);
 			i++;
 		}
 	}
@@ -1179,10 +1179,10 @@ void render_main(void)
 	//선택지 출력
 	if (showOptions) {
 		for (int32 i = 0; i < data->Scene->OptionCount;i++) {
-			Renderer_DrawTextShaded(&data->Scene->OptionList[i], 250, 895 + i * 40, data->OptionColors[i], color1);
-			Renderer_DrawTextSolid(&data->Scene->OptionList[i], 250, 895 + i * 40, data->OptionColors[i]);
+			Renderer_DrawTextShaded(&data->Scene->OptionList[i], 250, 710 + i * 40, data->OptionColors[i], color1);
+			Renderer_DrawTextSolid(&data->Scene->OptionList[i], 250, 710 + i * 40, data->OptionColors[i]);
 		}
-		Renderer_DrawImage(&OptionPointImage, 210, 895 + data->CurrentOptionNumber * 40);
+		Renderer_DrawImage(&OptionPointImage, 210, 710 + data->CurrentOptionNumber * 40);
 	}
 
 	//페이드 인 페이드 아웃 효과를 위한 검은색 배경

@@ -2,8 +2,8 @@
 #pragma once
 
 // â�� ũ��
-#define WINDOW_WIDTH	1711
-#define WINDOW_HEIGHT	1080
+#define WINDOW_WIDTH	1597
+#define WINDOW_HEIGHT	898
 
 // �ּ� ���
 #define IMAGE_DIRECTORY	"Asset/Image"
