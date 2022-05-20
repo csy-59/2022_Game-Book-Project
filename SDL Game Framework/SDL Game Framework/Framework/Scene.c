@@ -183,7 +183,7 @@ typedef struct tagScene {
 
 	int32			NextSceneNumberList[MAX_OPTION_COUNT];		//옵션 선택시 넘어가는 씬 넘버
 
-	bool			isShowThisEnding;							//엔딩을 봤는지(엔딩 씬일 경우에만 사용)
+	bool			isShowedThisEnding;							//엔딩을 봤는지(엔딩 씬일 경우에만 사용)
 } SceneStruct;
 
 SceneStruct Scenes[SCENE_COUNT];
@@ -193,7 +193,7 @@ bool isGotData = false;
 void GetSceneData(void) {
 	CsvFile csv;
 	memset(&csv, 0, sizeof(CsvFile));
-	CreateCsvFile(&csv, "temp3_1.csv");
+	CreateCsvFile(&csv, "temp3.csv");
 
 	isGotData = true;
 
@@ -338,7 +338,7 @@ void GetSceneData(void) {
 			Scenes[sceneNum].ShakingY = 0;
 		}
 
-		Scenes[sceneNum].isShowThisEnding = false;
+		Scenes[sceneNum].isShowedThisEnding = false;
 	}
 
 	FreeCsvFile(&csv);
@@ -351,17 +351,21 @@ void Scene_Clear(void) {
 		for (int32 i = 0; i < DataCount;i++) {
 			//이미지 해제
 			Image_FreeImage(&Scenes[i].BGImage);
-			if (Scenes[i].AddImageTimings > -1) {
-				Image_FreeImage(&Scenes[i].AdditionBGChangeImages);
+			for (int32 j = 0; j < MAX_BG_CHANGE_COUNT;j++) {
+				if (Scenes[i].AddImageTimings[j] > -1) {
+					Image_FreeImage(&Scenes[i].AdditionBGChangeImages[j]);
+				}
+				else {
+					break;
+				}
 			}
+			Image_FreeImage(&Scenes[i].ItemImage);
 
 			//오디오 해제
-			//Audio_FreeMusic(&Scenes[i].BGM);
-			//if (Scenes[i].EffectSoundTiming > -1) {
-			//	Audio_FreeSoundEffect(&Scenes[i].EffectSound);
-			//}
+			Audio_FreeMusic(&Scenes[i].BGM);
 
 			//텍스트 해제
+			Text_FreeText(&Scenes[i].SceneName);
 			for (int32 j = 0; j < Scenes[i].DialogCount;j++) {
 				int32 k = 0;
 				while (Scenes[i].DialogList[j][k].Length > 0) {
@@ -967,13 +971,14 @@ void update_main(void)
 		}
 		else {
 			isSceneChanging = false;
-			s_CurrentScene = data->Scene->NextSceneNumberList[data->CurrentOptionNumber];
 			//다음 씬이 -1, 즉 엔딩일때는 타이틀로 돌아감. 아니면 다음 씬을 구성
 			if (s_CurrentScene != -2) {
+				s_CurrentScene = data->Scene->NextSceneNumberList[data->CurrentOptionNumber];
 				Scene_SetNextScene(SCENE_MAIN);
 			}
 			else {
-				s_CurrentScene = 0;
+				data->Scene->isShowedThisEnding = true;
+				s_CurrentScene = 0;				
 				Scene_SetNextScene(SCENE_TITLE);
 			}
 		}
