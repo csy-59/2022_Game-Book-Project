@@ -152,7 +152,8 @@ enum BGMType {
 	BGM_IPARK_START_DRUM,
 	BGM_IPARK_START_RAT,
 	BGM_IPARK_SHEEEIC,
-	BGM_JUNGHU
+	BGM_JUNGHU,
+	BGM_J_Do
 };
 
 #define MAX_BG_CHANGE_COUNT 4		//배경 이미지 최대로 바뀌는 갯수
@@ -203,7 +204,7 @@ typedef struct tagScene {
 void GetSceneData(int32 sceneNum, SceneStruct* scene) {
 	CsvFile csv;
 	memset(&csv, 0, sizeof(CsvFile));
-	CreateCsvFile(&csv, "csv_ver3_temp.csv");
+	CreateCsvFile(&csv, "csv_ver4.csv");
 
 	if (csv.Items[sceneNum] == NULL) {
 		printf("ERROR!!! WORNG SCENE NUMBER");
@@ -236,6 +237,7 @@ void GetSceneData(int32 sceneNum, SceneStruct* scene) {
 	//아이템 이미지
 	int32 itemImagePoint = ParseToInt(csv.Items[sceneNum][columCount + 1]);
 	scene->AddItemImageTiming = itemImagePoint;
+	printf("%d\n", scene->AddItemImageTiming);
 	if (itemImagePoint > -1) {
 		Image_LoadImage(&scene->ItemImage, ParseToAscii(csv.Items[sceneNum][columCount]));
 		scene->FadeItemImageTiming = ParseToInt(csv.Items[sceneNum][columCount + 2]);
@@ -256,13 +258,13 @@ void GetSceneData(int32 sceneNum, SceneStruct* scene) {
 	scene->ShakingY = 0;
 
 	//화면 밀기 효과(수정 요함!)
-	//scene->ImagePushingTiming = ParseToInt(csv.Items[sceneNum][columCount++]);
-	//scene->ImagePushingType
-	scene->ImagePushingType = -1;
-	scene->ImagePushingTiming = -1;
+	scene->ImagePushingType = ParseToInt(csv.Items[sceneNum][columCount++]);
+	scene->ImagePushingTiming = ParseToInt(csv.Items[sceneNum][columCount++]);
+	//scene->ImagePushingType = -1;
+	//scene->ImagePushingTiming = -1;
 	scene->ImagePushingX = 0;
 	scene->ImagePushingY = 0;
-	columCount += 2;
+	//columCount += 2;
 
 	//텍스트 데이터 저장
 	int32 dialogCount = ParseToInt(csv.Items[sceneNum][columCount++]);
@@ -811,6 +813,8 @@ void ChangeBGM(int32 BGMNum) {
 		break;
 	case BGM_JUNGHU:
 		Audio_LoadMusic(&CurrentBGM, "junghu.mp3"); 
+	case BGM_J_Do:
+		Audio_LoadMusic(&CurrentBGM, "J_Do.mp3");
 	default:
 		printf("ERROR!!! WORNG BGM NUMBER\n");
 		break;
@@ -861,6 +865,7 @@ void init_main(void)
 	data->CurrentBGImage = &data->Scene.BGImage;
 	data->BGAlpha = 255;
 
+	//UI 이미지
 	Image_LoadImage(&data->UiImage, "UI.jpg");
 
 	//선택지 텍스트 요소 값
@@ -958,24 +963,6 @@ void update_main(void)
 					}
 
 
-					//아이템 이미지 적용
-					if (data->Scene.AddItemImageTiming > -1) {
-						if (!(data->CurrentTextNumber >= data->Scene.AddItemImageTiming && data->CurrentTextNumber < data->Scene.FadeItemImageTiming)) {
-							data->showItemImage = false;
-						}
-						else {
-							data->showItemImage = true;
-						}
-					}
-
-					//배경 밀어내는 효과 적용
-					if (data->Scene.ImagePushingTiming > -1) {
-
-						if (data->CurrentTextNumber == data->Scene.ImagePushingTiming) {
-							data->isImagePushing = true;
-						}
-					}
-
 					data->TextColor.a = 0;
 				}
 				if (data->CurrentTextNumber >= data->Scene.DialogCount && data->Scene.OptionCount <= 0) {
@@ -1017,11 +1004,6 @@ void update_main(void)
 			if (Input_GetKeyDown('3') || Input_GetKeyDown(VK_NUMPAD3)) {
 				if (optionCount >= 3) {
 					data->CurrentOptionNumber = 2;
-				}
-			}
-			if (Input_GetKeyDown('4') || Input_GetKeyDown(VK_NUMPAD4)) {
-				if (optionCount >= 4) {
-					data->CurrentOptionNumber = 3;
 				}
 			}
 
@@ -1069,48 +1051,17 @@ void update_main(void)
 		}
 	}
 
-	//아이템 이미지에 효과 적용(두근두근)
-	if (data->showItemImage) {
-		data->isItemPounding = true;
-		if (data->CurrentTextNumber >= data->Scene.AddPoundingItemImageTiming &&
-			data->CurrentTextNumber < data->Scene.FadePoundingItemImageTiming) {
-			if (!data->isItemBigger) {
-				if (data->Scene.ItemImage.ScaleX < 1.5f) {
-					data->Scene.ItemImage.ScaleX += 0.15f;
-					data->Scene.ItemImage.ScaleY += 0.15f;
-				}
-				else {
-					data->isItemBigger = true;
-				}
-			}
-			else {
-				if (data->Scene.ItemImage.ScaleX > 1.0f) {
-					data->Scene.ItemImage.ScaleX -= 0.15f;
-					data->Scene.ItemImage.ScaleY -= 0.15f;
-				}
-				else if (data->Scene.ItemImage.ScaleX <= 1.0f) {
-					if (data->ElapsedTime < 0.5f) {
-						data->ElapsedTime += Timer_GetDeltaTime();
-					}
-					else {
-						data->ElapsedTime = 0.0f;
-						data->isItemBigger = false;
-					}
-				}
-			}
-		}
-		else {
-			data->isItemPounding = false;
-			data->Scene.ItemImage.ScaleX = 1.0f;
-			data->Scene.ItemImage.ScaleY = 1.0f;
-		}
+	//아이템 이미지 적용
+	if (data->CurrentTextNumber >= data->Scene.AddItemImageTiming && data->CurrentTextNumber < data->Scene.FadeItemImageTiming) {
+		data->showItemImage = true;
+	}
+	else {
+		data->showItemImage = false;
 	}
 
-	//이미지 밀어올리기 효과 적용
-	if (data->isImagePushing) {
-		//특정 씬에서는 좌우로
-		if (s_CurrentScene == 1);
-
+	//배경 밀어내는 효과 적용
+	if (data->CurrentTextNumber == data->Scene.ImagePushingTiming) {
+		
 		//배경 이동
 		if (data->Scene.ImagePushingType == 0) {
 			//아직 끝으로 가지 않았을 경우
@@ -1124,13 +1075,27 @@ void update_main(void)
 		}
 		//아이템 이동
 		else if (data->Scene.ImagePushingType == 1) {
-			//아직 끝으로 가지 않았을 경우
-			if (data->Scene.ImagePushingY > (data->Scene.ItemImage.Height + WINDOW_HEIGHT) * -1) {
-				data->Scene.ImagePushingY -= 50;
+			//특정 씬에서는 좌우로
+			if (s_CurrentScene != 107) {
+				//아직 끝으로 가지 않았을 경우
+				if (data->Scene.ImagePushingY > (data->Scene.ItemImage.Height) * -1) {
+					data->Scene.ImagePushingY -= 50;
+				}
+				//끝에 다다랐을 때
+				else {
+					data->isImagePushing = false;
+				}
 			}
-			//끝에 다다랐을 때
 			else {
-				data->isImagePushing = false;
+				//아직 끝으로 가지 않았을 경우
+				if (data->Scene.ImagePushingX > (data->Scene.ItemImage.Width) * -1) {
+					data->Scene.ImagePushingX -= 50;
+				}
+				//끝에 다다랐을 때
+				else {
+					data->isImagePushing = false;
+				}
+
 			}
 		}
 		//이상한 값
@@ -1138,21 +1103,64 @@ void update_main(void)
 			printf("ERROR!! WORNG PUSHING TYPE\n");
 			data->isImagePushing = false;
 		}
+
 	}
 
+	//아이템 이미지에 효과 적용(두근두근)
+	if (data->CurrentTextNumber >= data->Scene.AddPoundingItemImageTiming &&
+		data->CurrentTextNumber < data->Scene.FadePoundingItemImageTiming) {
+		data->isItemPounding = true;
+		if (!data->isItemBigger) {
+			if (data->Scene.ItemImage.ScaleX < 1.5f) {
+				data->Scene.ItemImage.ScaleX += 0.15f;
+				data->Scene.ItemImage.ScaleY += 0.15f;
+			}
+			else {
+				data->isItemBigger = true;
+			}
+		}
+		else {
+			if (data->Scene.ItemImage.ScaleX > 1.0f) {
+				data->Scene.ItemImage.ScaleX -= 0.15f;
+				data->Scene.ItemImage.ScaleY -= 0.15f;
+			}
+			else if (data->Scene.ItemImage.ScaleX <= 1.0f) {
+				if (data->ElapsedTime < 0.5f) {
+					data->ElapsedTime += Timer_GetDeltaTime();
+				}
+				else {
+					data->ElapsedTime = 0.0f;
+					data->isItemBigger = false;
+				}
+			}
+		}
+	}
+	else {
+		data->isItemPounding = false;
+		data->Scene.ItemImage.ScaleX = 1.0f;
+		data->Scene.ItemImage.ScaleY = 1.0f;
+	}
+
+
 	//화면 흔들리는 효과
-	if (data->Scene.ShakingTimging == data->CurrentTextNumber && data->BlackOutAlpha == 0)
+	if (data->Scene.ShakingTimging == data->CurrentTextNumber)
 	{
 		if (!data->isShaking)
 		{
 			data->ElapsedShakingTime += Timer_GetDeltaTime();
-			if (data->ElapsedShakingTime < 10.0f && data->ElapsedShakingTime > 0.05f)
+
+			float shakingTime = 0.5f;
+			if (!data->BlackOutAlpha == 0) {
+				shakingTime = 0.7f;
+			}
+
+			if (data->ElapsedShakingTime < shakingTime && data->ElapsedShakingTime > 0.05f)
 			{
 				data->Scene.ShakingX = Random_GetNumberFromRange(-100, 100);
 				data->Scene.ShakingY = Random_GetNumberFromRange(-100, 100);
 				data->isEnter = false;
 			}
-			else if (data->ElapsedShakingTime >= 10.0f)
+			else if (data->ElapsedShakingTime >= shakingTime)
 			{
 				data->ElapsedShakingTime = 0.0f;
 
@@ -1178,10 +1186,12 @@ void render_main(void)
 
 	//배경 이미지 출력
 	if (data->Scene.ImagePushingType != 0) {
-		Renderer_DrawImage(data->CurrentBGImage, data->Scene.ShakingX, 0);
+		Renderer_DrawImage(data->CurrentBGImage, data->Scene.ShakingX, data->Scene.ShakingY);
 	}
 	else {
-		Renderer_DrawImage(data->CurrentBGImage, data->Scene.ImagePushingX, data->Scene.ImagePushingY);
+		Renderer_DrawImage(data->CurrentBGImage, 
+			data->Scene.ImagePushingX + data->Scene.ShakingX,
+			data->Scene.ImagePushingY + data->Scene.ShakingY);
 	}
 
 	//아이템 이미지 출력
@@ -1199,12 +1209,12 @@ void render_main(void)
 		if (data->isItemPounding) {
 			Renderer_DrawImage(&data->Scene.ItemImage,
 				(data->Scene.ItemImage.Width * (1.0f - data->Scene.ItemImage.ScaleX)) / 2 + data->Scene.ShakingX,
-				(data->Scene.ItemImage.Height * (1.0f - data->Scene.ItemImage.ScaleY)) / 2 - 100);
+				(data->Scene.ItemImage.Height * (1.0f - data->Scene.ItemImage.ScaleY)) / 2 + data->Scene.ShakingY);
+		}
+		else if (data->Scene.ImagePushingType != 1) {
+			Renderer_DrawImage(&data->Scene.ItemImage, data->Scene.ShakingX, data->Scene.ShakingY);
 		}
 		//이미지 밀어 올리기
-		else if (data->Scene.ImagePushingType != 1) {
-			Renderer_DrawImage(&data->Scene.ItemImage, data->Scene.ShakingX, 0);
-		}
 		else {
 			Renderer_DrawImage(&data->Scene.ItemImage,
 				data->Scene.ImagePushingX, data->Scene.ImagePushingY);
@@ -1212,7 +1222,9 @@ void render_main(void)
 	}
 
 	//UI 출력
-	Renderer_DrawImage(&data->UiImage, data->Scene.ShakingX, 0);
+	if (s_CurrentScene < 121) {
+		Renderer_DrawImage(&data->UiImage, data->Scene.ShakingX, data->Scene.ShakingY);
+	}
 
 	int32 finalTextPosY = 0;
 	SDL_Color color1 = { 14, 14, 14, 255 };
@@ -1236,7 +1248,7 @@ void render_main(void)
 	}
 
 	//페이드 인 페이드 아웃 효과를 위한 검은색 배경
-	Renderer_DrawImage(&data->BlackOutImage, 0, 0);
+	Renderer_DrawImage(&data->BlackOutImage, data->Scene.ShakingX, data->Scene.ShakingY);
 }
 
 void release_main(void)
