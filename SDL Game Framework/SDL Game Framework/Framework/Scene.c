@@ -822,13 +822,16 @@ void update_main(void)
 	if (Input_GetKeyDown(VK_ESCAPE)) {
 		if (!data->isShowingPopUp) {
 			data->isShowingPopUp = true;
+			Audio_Pause();
 			data->BlackOutAlpha = 125;
 		}
 		else {
 			data->isShowingPopUp = false;
+			Audio_Resume();
 		}
 	}
 
+	//팝업 표현 중일 때는 효과 적용X
 	if (!data->isShowingPopUp) {
 		//아이템 이미지 적용
 		if (data->CurrentTextNumber >= data->Scene.AddItemImageTiming && data->CurrentTextNumber < data->Scene.FadeItemImageTiming) {
