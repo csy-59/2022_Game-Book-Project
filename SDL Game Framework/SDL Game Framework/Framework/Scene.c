@@ -731,6 +731,7 @@ typedef struct tagMainScene {
 	Image		BlackOutImage;
 	int32		BlackOutAlpha;
 	float		ElapsedTime;
+	float		ElapsedShakingTime;
 	bool isSceneChanging;
 	bool showOptions;
 	bool isBGChanged;
@@ -738,6 +739,8 @@ typedef struct tagMainScene {
 	bool isItemPounding;
 	bool isItemBigger;
 	bool isImagePushing;
+	bool isShaking;
+	bool isEnter;
 	Text* ShowText;
 	Text NullText;
 	SDL_Color TextColor;
@@ -873,6 +876,9 @@ void init_main(void)
 	data->TextColor.g = 255;
 	data->TextColor.b = 255;
 
+	data->ElapsedTime = 0.0f;
+	data->ElapsedShakingTime = 0.0f;
+
 	data->isSceneChanging = false;
 	data->showOptions = false;
 	data->isBGChanged = false;
@@ -880,6 +886,8 @@ void init_main(void)
 	data->isItemPounding = false;
 	data->isItemBigger = false;
 	data->isImagePushing = false;
+	data->isShaking = false;
+	data->isEnter = false;
 	data->ShowText = NULL;
 	data->CurrentBGChangeNumber = 0;
 }
@@ -1049,7 +1057,7 @@ void update_main(void)
 		else {
 			data->isSceneChanging = false;
 			//다음 씬이 -1, 즉 엔딩일때는 타이틀로 돌아감. 아니면 다음 씬을 구성
-			if (s_CurrentScene != -2) {
+			if (s_CurrentScene != -1) {
 				s_CurrentScene = data->Scene.NextSceneNumberList[data->CurrentOptionNumber];
 				Scene_SetNextScene(SCENE_MAIN);
 			}
@@ -1132,6 +1140,30 @@ void update_main(void)
 		}
 	}
 
+	//화면 흔들리는 효과
+	if (data->Scene.ShakingTimging == data->CurrentTextNumber && data->BlackOutAlpha == 0)
+	{
+		if (!data->isShaking)
+		{
+			data->ElapsedShakingTime += Timer_GetDeltaTime();
+			if (data->ElapsedShakingTime < 10.0f && data->ElapsedShakingTime > 0.05f)
+			{
+				data->Scene.ShakingX = Random_GetNumberFromRange(-100, 100);
+				data->Scene.ShakingY = Random_GetNumberFromRange(-100, 100);
+				data->isEnter = false;
+			}
+			else if (data->ElapsedShakingTime >= 10.0f)
+			{
+				data->ElapsedShakingTime = 0.0f;
+
+				data->Scene.ShakingX = 0;
+				data->Scene.ShakingY = 0;
+				data->isShaking = true;
+				data->isEnter = true;
+			}
+		}
+	}
+
 	//암전 효과 적용
 	Image_SetAlphaValue(&data->BlackOutImage, data->BlackOutAlpha);
 
@@ -1146,7 +1178,7 @@ void render_main(void)
 
 	//배경 이미지 출력
 	if (data->Scene.ImagePushingType != 0) {
-		Renderer_DrawImage(data->CurrentBGImage, 0, 0);
+		Renderer_DrawImage(data->CurrentBGImage, data->Scene.ShakingX, 0);
 	}
 	else {
 		Renderer_DrawImage(data->CurrentBGImage, data->Scene.ImagePushingX, data->Scene.ImagePushingY);
@@ -1166,12 +1198,12 @@ void render_main(void)
 		//두근 거리는 효과
 		if (data->isItemPounding) {
 			Renderer_DrawImage(&data->Scene.ItemImage,
-				(data->Scene.ItemImage.Width * (1.0f - data->Scene.ItemImage.ScaleX)) / 2,
+				(data->Scene.ItemImage.Width * (1.0f - data->Scene.ItemImage.ScaleX)) / 2 + data->Scene.ShakingX,
 				(data->Scene.ItemImage.Height * (1.0f - data->Scene.ItemImage.ScaleY)) / 2 - 100);
 		}
 		//이미지 밀어 올리기
 		else if (data->Scene.ImagePushingType != 1) {
-			Renderer_DrawImage(&data->Scene.ItemImage, 0, 0);
+			Renderer_DrawImage(&data->Scene.ItemImage, data->Scene.ShakingX, 0);
 		}
 		else {
 			Renderer_DrawImage(&data->Scene.ItemImage,
@@ -1180,14 +1212,16 @@ void render_main(void)
 	}
 
 	//UI 출력
-	Renderer_DrawImage(&data->UiImage, 0, 0);
+	Renderer_DrawImage(&data->UiImage, data->Scene.ShakingX, 0);
 
+	int32 finalTextPosY = 0;
 	SDL_Color color1 = { 14, 14, 14, 255 };
 	//텍스트 출력
 	if (data->ShowText != NULL && !data->isBGChanged) {
 		int32 i = 0;
 		while (data->ShowText[i].Length != 0) {
-			Renderer_DrawTextShaded(&data->ShowText[i], 250, 645 + i * 40, data->TextColor, color1);
+			Renderer_DrawTextShaded(&data->ShowText[i], 250 + data->Scene.ShakingX, 645 + i * 40 + data->Scene.ShakingY, data->TextColor, color1);
+			finalTextPosY = 645 + i * 40 + data->Scene.ShakingY;
 			i++;
 		}
 	}
@@ -1195,10 +1229,10 @@ void render_main(void)
 	//선택지 출력
 	if (data->showOptions) {
 		for (int32 i = 0; i < data->Scene.OptionCount;i++) {
-			Renderer_DrawTextShaded(&data->Scene.OptionList[i], 250, 710 + i * 40, data->OptionColors[i], color1);
-			Renderer_DrawTextSolid(&data->Scene.OptionList[i], 250, 710 + i * 40, data->OptionColors[i]);
+			Renderer_DrawTextShaded(&data->Scene.OptionList[i], 250 + data->Scene.ShakingX, finalTextPosY + 65 + i * 40 + data->Scene.ShakingY, data->OptionColors[i], color1);
+			Renderer_DrawTextSolid(&data->Scene.OptionList[i], 250 + data->Scene.ShakingX, finalTextPosY + 65 + i * 40 + data->Scene.ShakingY, data->OptionColors[i]);
 		}
-		Renderer_DrawImage(&data->OptionPointImage, 210, 710 + data->CurrentOptionNumber * 40);
+		Renderer_DrawImage(&data->OptionPointImage, 210 + data->Scene.ShakingX, finalTextPosY + 65 + data->CurrentOptionNumber * 40 + data->Scene.ShakingY);
 	}
 
 	//페이드 인 페이드 아웃 효과를 위한 검은색 배경
