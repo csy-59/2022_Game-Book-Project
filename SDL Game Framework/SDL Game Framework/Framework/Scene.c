@@ -581,6 +581,82 @@ void ChangeBGM(int32 BGMNum) {
 	}
 }
 
+bool IsThisEndingShown(int32 SceneNum) {
+	FILE* fp = NULL;
+
+	//우선 파일을 읽어서 데이터를 받아 어디에 저장할지 판별한다.
+	fopen_s(&fp, "Asset/Data/endingLog.txt", "r");
+	if (fp == NULL) {
+		printf("ERROR!!! CAN'T READ endingLog.txt\n");
+		return;
+	}
+
+	char endNum[128] = "";
+	do {
+		fgets(endNum, sizeof(endNum), fp);
+		if (strlen(endNum) != 0) {
+			int32 num = atoi(endNum);
+			if (num == SceneNum) {
+				return true;
+			}
+			else if (num < SceneNum) {
+				return false;
+			}
+			endNum[0] = '\0';
+		}
+		else {
+			break;
+		}
+	} while (true);
+	fclose(fp);
+
+	return false;
+}
+void RecordThisEnding(int32 SceneNum) {
+
+	FILE* fp = NULL;
+
+	fopen_s(&fp, "Asset/Data/endingLog.txt", "r");
+	if (fp == NULL) {
+		printf("ERROR!!! CAN'T READ endingLog.txt\n");
+		return;
+	}
+
+	bool endingList[17] = { false };
+	endingList[SceneNum - 121] = true;
+	char endNum[128] = "";
+	do {
+		fgets(endNum, sizeof(endNum), fp);
+		if (strlen(endNum) != 0) {
+			int32 num = atoi(endNum);
+			endingList[num - 121] = true;
+			endNum[0] = '\0';
+		}
+		else {
+			break;
+		}
+	} while (true);
+	fclose(fp);
+
+	//해당 데이터를 기반으로 데이터 다시 저장
+	fopen_s(&fp, "Asset/Data/endingLog.txt", "w");
+	if (fp == NULL) {
+		printf("ERROR!!! CAN'T READ endingLog.txt\n");
+		return;
+	}
+
+	for (int32 i = 0; i < 17; i++) {
+		if (endingList[i]) {
+			char tempNum[10];
+			_itoa_s(i + 121, tempNum, sizeof(tempNum), 10);
+			strcat_s(endNum, sizeof(endNum), tempNum);
+			strcat_s(endNum, sizeof(endNum), "\n");
+		}
+	}
+	fputs(endNum, fp);
+	fclose(fp);
+}
+
 void init_main(void)
 {
 	g_Scene.Data = malloc(sizeof(MainScene));
@@ -810,8 +886,10 @@ void update_main(void)
 				Scene_SetNextScene(SCENE_MAIN);
 			}
 			else {
-				data->Scene.isShowedThisEnding = true;
-				s_CurrentScene = 0;
+				//data->Scene.isShowedThisEnding = true;
+				//엔딩을 봤음을 기록
+				RecordThisEnding(data->Scene.SceneNumber);
+				s_CurrentScene = 1;
 				Scene_SetNextScene(SCENE_TITLE);
 			}
 			data->isShowingPopUp = false;
