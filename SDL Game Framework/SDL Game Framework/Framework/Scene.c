@@ -86,7 +86,7 @@ void update_title(void)
 	Image_SetAlphaValue(&data->BlackOutImage, data->BlackOutAlpha);
 
 	if (Input_GetKeyDown(VK_ESCAPE)) {
-		exit(0);
+		s_IsGameClose = true;
 	}
 }
 void render_title(void)
@@ -1113,4 +1113,9 @@ void Scene_Change(void)
 	g_Scene.Init();
 
 	s_nextScene = SCENE_NULL;
+}
+
+
+bool Scene_IsGameClose(void) {
+	return s_IsGameClose;
 }

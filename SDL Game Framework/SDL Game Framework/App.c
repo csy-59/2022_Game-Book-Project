@@ -91,7 +91,7 @@ int32 App_Run(void)
 	Scene_SetNextScene(SCENE_TITLE);
 
 	SDL_Event event;
-	while (true)
+	while (!Scene_IsGameClose())
 	{
 		if (SDL_PollEvent(&event))
 		{

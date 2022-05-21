@@ -3,7 +3,7 @@
 #include "Type.h"
 
 
-
+static bool s_IsGameClose = false;
 
 typedef struct Scene
 {
@@ -44,7 +44,7 @@ void Scene_SetNextScene(ESceneType scene);
 void Scene_Change(void);
 
 /// <summary>
-/// 씬 데이터 정리
+/// 게임을 닫았는지 확인
 /// </summary>
 /// <param name=""></param>
-void Scene_Clear(void);
+bool Scene_IsGameClose(void);
