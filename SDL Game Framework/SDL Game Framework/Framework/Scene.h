@@ -19,9 +19,7 @@ typedef enum SceneType
 	SCENE_NULL,
 	SCENE_TITLE,
 	SCENE_CREDIT,
-	SCENE_INTRO,
 	SCENE_MAIN,
-	SCENE_TEMP,
 	SCENE_MAX
 } ESceneType;
 
