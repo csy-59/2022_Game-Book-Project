@@ -149,13 +149,9 @@ enum BGMType {
 	BGM_ENDING_SAD,
 	BGM_ZOMBIES,
 	BGM_BSIN,
-	BGM_BEGAUN_CUNG,
-	BGM_BEGAUN_UNG,
-	BGM_DUGENG,
 	BGM_KIZUNGUNG,
 	BGM_IPARK_START_DRUM,
-	BGM_IPARK_START_RAT,
-	BGM_IPARK_SHEEEIC,
+	BGM_SHEEEIC,
 	BGM_JUNGHU,
 	BGM_J_Do
 };
@@ -607,6 +603,7 @@ void ChangeBGM(int32 BGMNum) {
 		Audio_LoadMusic(&CurrentBGM, "J_Do.mp3");
 	case -1:
 		Audio_LoadMusic(&CurrentBGM, "noMusic.mp3");
+		break;
 	default:
 		printf("ERROR!!! WORNG BGM NUMBER\n");
 		break;
@@ -1150,7 +1147,7 @@ void render_main(void)
 	}
 
 	//UI 출력
-	if (s_CurrentScene < 121) {
+	if (s_CurrentScene <= 121) {
 		Renderer_DrawImage(&data->UiImage, data->Scene.ShakingX, data->Scene.ShakingY);
 	}
 
