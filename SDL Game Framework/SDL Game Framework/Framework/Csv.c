@@ -99,6 +99,7 @@ void CreateCsvFile(CsvFile* csvFile, const char* filename)
 		s_BufferPointer = lineEnd + 1;
 	}
 
+	csvFile->RowCount = 139;
 	free(s_Buffer);
 	s_Buffer = NULL;
 	s_BufferPointer = NULL;

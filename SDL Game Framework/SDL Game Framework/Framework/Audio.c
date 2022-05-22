@@ -34,7 +34,7 @@ void Audio_Cleanup(void)
 void Audio_SetVolume(float volume)
 {
 	s_MusicVolume = Clamp(0.0f, volume, 1.0f);
-	
+
 	int32 realVolume = 0 + s_MusicVolume * MIX_MAX_VOLUME;
 	Mix_VolumeMusic(realVolume);
 }
