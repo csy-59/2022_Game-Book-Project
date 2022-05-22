@@ -10,7 +10,7 @@ Scene g_Scene;
 static ESceneType s_nextScene = SCENE_NULL;
 
 #define TITLE_MUSIC "title.mp3"
-#define CSV_FILE_NAME "csv_ver4 (5)_temp.csv"
+#define CSV_FILE_NAME "csv.csv"
 #define ARROW_IMAGE_FILE "point.png"
 #define SRINJ_IMAGE_FILE "srinj1.png"
 
