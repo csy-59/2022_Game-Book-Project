@@ -57,7 +57,7 @@ void init_title(void)
 
 	Audio_LoadMusic(&data->TitleBGM, "title.mp3");
 
-	Audio_PlayFadeIn(&data->TitleBGM, INFINITY_LOOP, 3000);
+	Audio_PlayFadeIn(&data->TitleBGM, INFINITY_LOOP, 2000);
 
 	data->Volume = 1.0f;
 
@@ -175,7 +175,7 @@ typedef struct tagScene {
 	Image			AdditionBGChangeImages[MAX_BG_CHANGE_COUNT];//배경 추가 이미지 배열
 	int32			AddImageTimings[MAX_BG_CHANGE_COUNT];		//배경 추가 이미지 타이밍
 
-	Music			BGM;										//배경 음악
+	//Music			BGM;										//배경 음악
 	int32			BGMNumber;									//배경 음악 번호 위에 열거형에 정의
 
 	Image			ItemImage;									//아이템 이미지
@@ -202,7 +202,7 @@ typedef struct tagScene {
 
 	int32			NextSceneNumberList[MAX_OPTION_COUNT];		//옵션 선택시 넘어가는 씬 넘버
 
-	bool			isShowedThisEnding;							//엔딩을 봤는지(엔딩 씬일 경우에만 사용)
+	bool			IsNextSceneBGMChange[MAX_OPTION_COUNT];			//다음 씬에서 BGMNUM이 바뀌는 확인
 } SceneStruct;
 
 void GetSceneData(int32 sceneNum, SceneStruct* scene) {
@@ -331,15 +331,22 @@ void GetSceneData(int32 sceneNum, SceneStruct* scene) {
 
 				columCount++;
 				scene->NextSceneNumberList[j] = ParseToInt(csv.Items[sceneNum][columCount]);
+				//다음씬에서 bgm이 바뀌는지 확인하는 것
+				if (scene->NextSceneNumberList[j] > -1) {
+					scene->IsNextSceneBGMChange[j] =
+						ParseToInt(csv.Items[scene->NextSceneNumberList[j]][3]) != scene->BGMNumber;
+				}
 				columCount++;
 			}
 		}
 	}
 	else {
 		scene->NextSceneNumberList[0] = ParseToInt(csv.Items[sceneNum][++columCount]);
+		if (scene->NextSceneNumberList[0] > -1) {
+			scene->IsNextSceneBGMChange[0] =
+				ParseToInt(csv.Items[scene->NextSceneNumberList[0]][3]) != scene->BGMNumber;
+		}
 	}
-
-	scene->isShowedThisEnding = false;
 
 	FreeCsvFile(&csv);
 }
@@ -358,7 +365,7 @@ void Scene_Clear(SceneStruct* scene) {
 	Image_FreeImage(&scene->ItemImage);
 
 	//오디오 해제
-	Audio_FreeMusic(&scene->BGM);
+	//Audio_FreeMusic(&scene->BGM);
 
 	//텍스트 해제
 	if (scene->SceneName.Length > 0) {
@@ -575,6 +582,8 @@ void ChangeBGM(int32 BGMNum) {
 		Audio_LoadMusic(&CurrentBGM, "junghu.mp3"); 
 	case BGM_J_Do:
 		Audio_LoadMusic(&CurrentBGM, "J_Do.mp3");
+	case -1:
+		Audio_LoadMusic(&CurrentBGM, "noMusic.mp3");
 	default:
 		printf("ERROR!!! WORNG BGM NUMBER\n");
 		break;
@@ -585,29 +594,27 @@ bool IsThisEndingShown(int32 SceneNum) {
 	FILE* fp = NULL;
 
 	//우선 파일을 읽어서 데이터를 받아 어디에 저장할지 판별한다.
-	fopen_s(&fp, "Asset/Data/endingLog.txt", "r");
-	if (fp == NULL) {
+	errno_t err = fopen_s(&fp, "Asset/Data/endingLog.txt", "r");
+	
+	if (err != 0) {
 		printf("ERROR!!! CAN'T READ endingLog.txt\n");
 		return;
 	}
 
 	char endNum[128] = "";
-	do {
-		fgets(endNum, sizeof(endNum), fp);
-		if (strlen(endNum) != 0) {
-			int32 num = atoi(endNum);
-			if (num == SceneNum) {
-				return true;
-			}
-			else if (num < SceneNum) {
-				return false;
-			}
-			endNum[0] = '\0';
+	while (fgets(endNum, sizeof(endNum), fp) != NULL) {
+		int32 num = atoi(endNum);
+		printf("%d\n", num);
+		if (num == SceneNum) {
+			fclose(fp);
+			return true;
 		}
-		else {
-			break;
+		else if (num > SceneNum) {
+			fclose(fp);
+			return false;
 		}
-	} while (true);
+		endNum[0] = '\n';
+	}
 	fclose(fp);
 
 	return false;
@@ -622,20 +629,26 @@ void RecordThisEnding(int32 SceneNum) {
 		return;
 	}
 
+	//for (int32 i = 0; i < 17; i++) {
+	//	IsThisEndingShown(i + 121);
+	//	printf("\n");
+	//}
+
 	bool endingList[17] = { false };
 	endingList[SceneNum - 121] = true;
 	char endNum[128] = "";
-	do {
-		fgets(endNum, sizeof(endNum), fp);
+
+	while (fgets(endNum, sizeof(endNum), fp) != NULL) {
 		if (strlen(endNum) != 0) {
 			int32 num = atoi(endNum);
 			endingList[num - 121] = true;
-			endNum[0] = '\0';
+			endNum[0] = '\n';
 		}
 		else {
 			break;
 		}
-	} while (true);
+
+	}
 	fclose(fp);
 
 	//해당 데이터를 기반으로 데이터 다시 저장
@@ -645,6 +658,7 @@ void RecordThisEnding(int32 SceneNum) {
 		return;
 	}
 
+	endNum[0] = '\0';
 	for (int32 i = 0; i < 17; i++) {
 		if (endingList[i]) {
 			char tempNum[10];
@@ -664,7 +678,6 @@ void init_main(void)
 
 	MainScene* data = (MainScene*)g_Scene.Data;
 
-
 	GetSceneData(s_CurrentScene, &data->Scene);
 
 	//data->Scene = &Scenes[s_CurrentScene];
@@ -680,13 +693,8 @@ void init_main(void)
 	data->ElapsedTime = 0.0f;
 	//BGM 관련
 	if (CurrentBGMNumber != data->Scene.BGMNumber) {
-		if (Audio_IsMusicPlaying() || Audio_IsMusicFading()) {
-			Audio_FadeOut(1800);
-		}
-		else {
-			ChangeBGM(data->Scene.BGMNumber);
-			Audio_PlayFadeIn(&CurrentBGM, INFINITY_LOOP, 2000);
-		}
+		ChangeBGM(data->Scene.BGMNumber);
+		Audio_PlayFadeIn(&CurrentBGM, INFINITY_LOOP, 2000);
 	}
 
 	//Audio_PlayFadeIn(&data->Scene->BGM, INFINITY_LOOP, 2000);
@@ -735,6 +743,11 @@ void init_main(void)
 	data->isShowingPopUp = false;
 	data->ShowText = NULL;
 	data->CurrentBGChangeNumber = 0;
+
+	//엔딩 씬이라면 파일에 저장
+	if (s_CurrentScene >= 121 && s_CurrentScene < 138) {
+		RecordThisEnding(data->Scene.SceneNumber);
+	}
 }
 
 void update_main(void)
@@ -809,6 +822,9 @@ void update_main(void)
 				}
 				if (data->CurrentTextNumber >= data->Scene.DialogCount && data->Scene.OptionCount <= 0) {
 					data->isSceneChanging = true;
+ 					if (data->Scene.IsNextSceneBGMChange[0]) {
+						Audio_FadeOut(1800);
+					}
 					s_CurrentScene = data->Scene.NextSceneNumberList[data->CurrentOptionNumber];
 				}
 			}
@@ -865,13 +881,16 @@ void update_main(void)
 			//Image_SetAlphaValue(&data->Scene->OptionImagesList[data->CurrentOptionNumber], 255);
 			data->OptionColors[data->CurrentOptionNumber].a = 255;
 
+			//선택지 선택
+			if (Input_GetKeyDown(VK_RETURN) && !data->isShowingPopUp) {
+				data->isSceneChanging = true;
+				s_CurrentScene = data->Scene.NextSceneNumberList[data->CurrentOptionNumber];
+				if (data->Scene.IsNextSceneBGMChange[data->CurrentOptionNumber]) {
+					Audio_FadeOut(1800);
+				}
+			}
 		}
 
-		//선택지 선택
-		if (Input_GetKeyDown(VK_RETURN)) {
-			data->isSceneChanging = true;
-			s_CurrentScene = data->Scene.NextSceneNumberList[data->CurrentOptionNumber];
-		}
 	}
 	//씬 전환 처리(페이드 인/아웃)
 	else {
@@ -882,13 +901,12 @@ void update_main(void)
 			data->isSceneChanging = false;
 			//다음 씬이 -1, 즉 엔딩일때는 타이틀로 돌아감. 아니면 다음 씬을 구성
 			if (s_CurrentScene != -1 && !data->isShowingPopUp) {
-				s_CurrentScene = data->Scene.NextSceneNumberList[data->CurrentOptionNumber];
+				//s_CurrentScene = data->Scene.NextSceneNumberList[data->CurrentOptionNumber];
 				Scene_SetNextScene(SCENE_MAIN);
 			}
 			else {
 				//data->Scene.isShowedThisEnding = true;
 				//엔딩을 봤음을 기록
-				RecordThisEnding(data->Scene.SceneNumber);
 				s_CurrentScene = 1;
 				Scene_SetNextScene(SCENE_TITLE);
 			}
@@ -906,6 +924,13 @@ void update_main(void)
 		else {
 			data->isShowingPopUp = false;
 			Audio_Resume();
+		}
+	}
+
+	if (data->isShowingPopUp) {
+		if (Input_GetKeyDown(VK_RETURN)) {
+			data->isSceneChanging = true;
+			s_CurrentScene = -1;
 		}
 	}
 

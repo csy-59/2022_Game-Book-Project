@@ -91,7 +91,7 @@ int32 App_Run(void)
 	Scene_SetNextScene(SCENE_TITLE);
 
 	SDL_Event event;
-	while (!Scene_IsGameClose())
+	while (true)
 	{
 		if (SDL_PollEvent(&event))
 		{
@@ -112,8 +112,13 @@ int32 App_Run(void)
 				processInput();
 				update();
 				render();
+
+				if (Scene_IsGameClose()) {
+					event.type = SDL_QUIT;
+				}
 			}
 		}
+
 	}
 
 	g_Scene.Release();
