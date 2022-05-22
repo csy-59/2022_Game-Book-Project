@@ -540,7 +540,7 @@ void log2OnFinished(int32 channel)
 #pragma endregion
 
 bool s_IsEndingScene = false;
-static int32 s_CurrentScene = 54;
+static int32 s_CurrentScene = 73;
 
 #pragma region MainScene
 typedef struct tagMainScene {
@@ -575,7 +575,7 @@ typedef struct tagMainScene {
 	Image PopupImage;
 } MainScene;
 
-static int32 SCROLE_SPEED = 7;
+static int32 SCROLE_SPEED = 20;
 
 static Music CurrentBGM;
 static int32 CurrentBGMNumber = BGM_TITLE;
