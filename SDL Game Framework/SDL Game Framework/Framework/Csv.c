@@ -58,7 +58,7 @@ void CreateCsvFile(CsvFile* csvFile, const char* filename)
 	{
 		int row = csvFile->RowCount;
 
-		int commaCount = 0;
+ 		int commaCount = 0;
 		const char* lineStart = s_BufferPointer;
 		const char* lineEnd = lineStart;
 		while (true)
@@ -68,7 +68,7 @@ void CreateCsvFile(CsvFile* csvFile, const char* filename)
 				break;
 			}
 
-			if (',' == *lineEnd)
+ 			if (',' == *lineEnd)
 			{
 				++commaCount;
 			}

@@ -161,6 +161,7 @@ enum BGMType {
 };
 
 #define MAX_BG_CHANGE_COUNT 4		//배경 이미지 최대로 바뀌는 갯수
+#define MAX_EFFECT_SOUND_COUNT 3	//이펙스 사운드 갯수
 #define MAX_TEXT_SET_COUNT 13		//텍스트 세트가 최대로 바뀌는 갯수
 #define MAX_TEXT_COUNT 7			//각 텍스트 세트에 최대 줄갯수
 #define MAX_OPTION_COUNT 3			//선택지 최대 갯수
@@ -174,6 +175,9 @@ typedef struct tagScene {
 	Image			BGImage;									//배경화면
 	Image			AdditionBGChangeImages[MAX_BG_CHANGE_COUNT];//배경 추가 이미지 배열
 	int32			AddImageTimings[MAX_BG_CHANGE_COUNT];		//배경 추가 이미지 타이밍
+
+	SoundEffect		SoundEffects[MAX_EFFECT_SOUND_COUNT];		//사운드 이펙트 배열
+	int32			AddSoundEffectTimings[MAX_EFFECT_SOUND_COUNT];//사운드 이펙트 타이밍
 
 	//Music			BGM;										//배경 음악
 	int32			BGMNumber;									//배경 음악 번호 위에 열거형에 정의
@@ -208,7 +212,7 @@ typedef struct tagScene {
 void GetSceneData(int32 sceneNum, SceneStruct* scene) {
 	CsvFile csv;
 	memset(&csv, 0, sizeof(CsvFile));
-	CreateCsvFile(&csv, "csv_ver4.csv");
+ 	CreateCsvFile(&csv, "csv_ver4_effect.csv");
 
 	if (csv.Items[sceneNum] == NULL) {
 		printf("ERROR!!! WORNG SCENE NUMBER");
@@ -227,13 +231,23 @@ void GetSceneData(int32 sceneNum, SceneStruct* scene) {
 	//bgm
 	//Audio_LoadMusic(&Scenes[sceneNum].BGM, ParseToAscii(csv.Items[i][columCount++]));
 	scene->BGMNumber = ParseToInt(csv.Items[sceneNum][columCount++]);
-
+		
 	//배경 전환 이미지
 	for (int32 j = 0; j < MAX_BG_CHANGE_COUNT;j++) {
 		int32 additionalImagePoint = ParseToInt(csv.Items[sceneNum][columCount + 1]);
 		scene->AddImageTimings[j] = additionalImagePoint;
 		if (additionalImagePoint > -1) {
 			Image_LoadImage(&scene->AdditionBGChangeImages[j], ParseToAscii(csv.Items[sceneNum][columCount]));
+		}
+		columCount += 2;
+	}
+
+	//이펙트 사운드
+	for (int32 j = 0; j < MAX_EFFECT_SOUND_COUNT; j++) {
+		int32 addEffectSoundPoint = ParseToInt(csv.Items[sceneNum][columCount + 1]);
+		scene->AddSoundEffectTimings[j] = addEffectSoundPoint;
+		if (addEffectSoundPoint > -1) {
+			Audio_LoadSoundEffect(&scene->SoundEffects[j], ParseToAscii(csv.Items[sceneNum][columCount]));
 		}
 		columCount += 2;
 	}
@@ -366,6 +380,14 @@ void Scene_Clear(SceneStruct* scene) {
 
 	//오디오 해제
 	//Audio_FreeMusic(&scene->BGM);
+	for (int32 j = 0; j < MAX_EFFECT_SOUND_COUNT; j++) {
+		if (scene->AddSoundEffectTimings[j] > -1) {
+			Audio_FreeSoundEffect(&scene->SoundEffects[j]);
+		}
+		else {
+			break;
+		}
+	}
 
 	//텍스트 해제
 	if (scene->SceneName.Length > 0) {
@@ -514,6 +536,7 @@ typedef struct tagMainScene {
 	SDL_Color TextColor;
 	Image OptionPointImage;
 	int32 CurrentBGChangeNumber;
+	int32 CurrentSoundEffectNumber;
 	Image UiImage;
 	Image PopupImage;
 } MainScene;
@@ -743,6 +766,7 @@ void init_main(void)
 	data->isShowingPopUp = false;
 	data->ShowText = NULL;
 	data->CurrentBGChangeNumber = 0;
+	data->CurrentSoundEffectNumber = 0;
 
 	//엔딩 씬이라면 파일에 저장
 	if (s_CurrentScene >= 121 && s_CurrentScene < 138) {
@@ -796,6 +820,7 @@ void update_main(void)
 				if (data->CurrentTextNumber < data->Scene.DialogCount) {
 					data->ShowText = &data->Scene.DialogList[data->CurrentTextNumber];
 					data->CurrentTextNumber++;
+					Audio_FadeOutSoundEffect(800);
 					data->Scene.ShakingX = 0;
 					data->Scene.ShakingY = 0;
 
@@ -817,6 +842,19 @@ void update_main(void)
 						}
 					}
 
+					//이펙트 사운드 추가
+					for (int32 i = data->CurrentSoundEffectNumber; i < MAX_EFFECT_SOUND_COUNT; i++) {
+						if (data->Scene.AddSoundEffectTimings[i] > -1) {
+							if (data->CurrentTextNumber == data->Scene.AddSoundEffectTimings[i]) {
+								Audio_PlaySoundEffect(&data->Scene.SoundEffects[i], 1);
+								data->CurrentBGChangeNumber = i;
+								break;
+							}
+						}
+						else {
+							break;
+						}
+					}
 
 					data->TextColor.a = 0;
 				}
@@ -824,6 +862,7 @@ void update_main(void)
 					data->isSceneChanging = true;
  					if (data->Scene.IsNextSceneBGMChange[0]) {
 						Audio_FadeOut(1800);
+						Audio_FadeOutSoundEffect(1800);
 					}
 					s_CurrentScene = data->Scene.NextSceneNumberList[data->CurrentOptionNumber];
 				}
@@ -887,6 +926,7 @@ void update_main(void)
 				s_CurrentScene = data->Scene.NextSceneNumberList[data->CurrentOptionNumber];
 				if (data->Scene.IsNextSceneBGMChange[data->CurrentOptionNumber]) {
 					Audio_FadeOut(1800);
+					Audio_FadeOutSoundEffect(1800);
 				}
 			}
 		}
@@ -919,11 +959,13 @@ void update_main(void)
 		if (!data->isShowingPopUp) {
 			data->isShowingPopUp = true;
 			Audio_Pause();
+			Audio_StopSoundEffect();
 			data->BlackOutAlpha = 125;
 		}
 		else {
 			data->isShowingPopUp = false;
 			Audio_Resume();
+			Audio_ResumeSoundEffect();
 		}
 	}
 
