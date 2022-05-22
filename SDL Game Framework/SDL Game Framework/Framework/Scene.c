@@ -10,7 +10,7 @@ Scene g_Scene;
 static ESceneType s_nextScene = SCENE_NULL;
 
 #define TITLE_MUSIC "title.mp3"
-#define CSV_FILE_NAME "csv.csv"
+#define CSV_FILE_NAME "lastcsv3.csv"
 #define ARROW_IMAGE_FILE "point.png"
 #define SRINJ_IMAGE_FILE "srinj1.png"
 
@@ -537,7 +537,7 @@ void log2OnFinished(int32 channel)
 #pragma endregion
 
 bool s_IsEndingScene = false;		//엔딩 모음집과 연결되었는지 확인
-static int32 s_CurrentScene = 1;	//현재 씬 넘버
+static int32 s_CurrentScene = 45;	//현재 씬 넘버
 
 #pragma region MainScene
 typedef struct tagMainScene {
@@ -1036,7 +1036,7 @@ void update_main(void)
 			if (Input_GetKeyDown(VK_SPACE)) {
 				//출력 텍스트 조절
 				if (data->CurrentTextNumber < data->Scene.DialogCount) {
-					data->ShowText = &data->Scene.DialogList[data->CurrentTextNumber - 1];
+					data->ShowText = &data->Scene.DialogList[data->CurrentTextNumber];
 					data->CurrentTextNumber++;
 					Audio_FadeOutSoundEffect(800);
 					data->Scene.ShakingX = 0;
@@ -1045,7 +1045,7 @@ void update_main(void)
 					//배경 이미지 변경
 					for (int32 i = data->CurrentBGChangeNumber; i < MAX_BG_CHANGE_COUNT;i++) {
 						if (data->Scene.AddImageTimings[i] > -1) {
-							if (data->CurrentTextNumber == data->Scene.AddImageTimings[i]) {
+							if (data->CurrentTextNumber + 1 == data->Scene.AddImageTimings[i]) {
 								data->isBGChanged = true;
 								data->ShowText = &data->NullText;
 								data->CurrentBGChangeNumber = i;
@@ -1062,8 +1062,14 @@ void update_main(void)
 
 					//이펙트 사운드 추가
 					for (int32 i = data->CurrentSoundEffectNumber; i < MAX_EFFECT_SOUND_COUNT; i++) {
-						if (data->Scene.AddSoundEffectTimings[i] > -1) {
-							if (data->CurrentTextNumber == data->Scene.AddSoundEffectTimings[i]) {
+						if (data->Scene.AddSoundEffectTimings[i] > -1)
+						{
+							if (data->CurrentTextNumber + 1 == data->Scene.AddSoundEffectTimings[i] && data->CurrentTextNumber == 0) {
+								Audio_PlaySoundEffect(&data->Scene.SoundEffects[i], 0);
+								data->CurrentBGChangeNumber = i;
+								break;
+							}
+							else if (data->CurrentTextNumber + 1 == data->Scene.AddSoundEffectTimings[i]) {
 								Audio_PlaySoundEffect(&data->Scene.SoundEffects[i], 0);
 								data->CurrentBGChangeNumber = i;
 								break;
@@ -1170,6 +1176,8 @@ void update_main(void)
 				else {
 					s_IsEndingScene = false;
 					Scene_SetNextScene(SCENE_END);
+					s_CurrentScene = 1;
+
 				}
 			}
 			else if (s_CurrentScene != -1 && !data->isShowingPopUp) {
@@ -1211,7 +1219,7 @@ void update_main(void)
 	//팝업 표현 중일 때는 효과 적용X
 	if (!data->isShowingPopUp) {
 		//아이템 이미지 적용
-		if (data->CurrentTextNumber >= data->Scene.AddItemImageTiming && data->CurrentTextNumber < data->Scene.FadeItemImageTiming) {
+		if (data->CurrentTextNumber + 1 >= data->Scene.AddItemImageTiming && data->CurrentTextNumber + 1 < data->Scene.FadeItemImageTiming) {
 			data->showItemImage = true;
 		}
 		else {
@@ -1219,7 +1227,7 @@ void update_main(void)
 		}
 
 		//배경 밀어내는 효과 적용
-		if (data->CurrentTextNumber == data->Scene.ImagePushingTiming) {
+		if (data->CurrentTextNumber + 1 == data->Scene.ImagePushingTiming) {
 
 			//배경 이동
 			if (data->Scene.ImagePushingType == 0) {
@@ -1268,8 +1276,8 @@ void update_main(void)
 		}
 
 		//아이템 이미지에 효과 적용(두근두근)
-		if (data->CurrentTextNumber >= data->Scene.AddPoundingItemImageTiming &&
-			data->CurrentTextNumber < data->Scene.FadePoundingItemImageTiming) {
+		if (data->CurrentTextNumber + 1 >= data->Scene.AddPoundingItemImageTiming &&
+			data->CurrentTextNumber + 1 < data->Scene.FadePoundingItemImageTiming) {
 			data->isItemPounding = true;
 			if (!data->isItemBigger) {
 				if (data->Scene.ItemImage.ScaleX < 1.5f) {
@@ -1304,7 +1312,7 @@ void update_main(void)
 
 
 		//화면 흔들리는 효과
-		if (data->Scene.ShakingTimging == data->CurrentTextNumber)
+		if (data->Scene.ShakingTimging == data->CurrentTextNumber + 1)
 		{
 			if (!data->isShaking)
 			{
