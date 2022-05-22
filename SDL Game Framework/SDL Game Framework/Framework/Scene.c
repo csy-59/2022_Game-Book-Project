@@ -1158,17 +1158,26 @@ void update_main(void)
 		else {
 			data->isSceneChanging = false;
 			//다음 씬이 -1, 즉 엔딩일때는 타이틀로 돌아감. 아니면 다음 씬을 구성
-			if (s_CurrentScene != -1 && !data->isShowingPopUp) {
+			if (s_IsEndingScene && !data->isShowingPopUp) {
+				if (s_CurrentScene != -1) {
+					for (int32 i = 0; i < data->Scene.OptionCount; i++) {
+						if (data->Scene.NextSceneNumberList[i] >= 121) {
+							s_CurrentScene = data->Scene.NextSceneNumberList[i];
+							Scene_SetNextScene(SCENE_MAIN);
+						}
+					}
+				}
+				else {
+					s_IsEndingScene = false;
+					Scene_SetNextScene(SCENE_END);
+				}
+			}
+			else if (s_CurrentScene != -1 && !data->isShowingPopUp) {
 				//s_CurrentScene = data->Scene.NextSceneNumberList[data->CurrentOptionNumber];
 				Scene_SetNextScene(SCENE_MAIN);
 			}
-			else if (s_IsEndingScene && !data->isShowingPopUp) {
-				s_IsEndingScene = false;
-				Scene_SetNextScene(SCENE_END);
-			}
 			else {
 				//data->Scene.isShowedThisEnding = true;
-				//엔딩을 봤음을 기록
 				s_CurrentScene = 1;
 				Scene_SetNextScene(SCENE_TITLE);
 			}
