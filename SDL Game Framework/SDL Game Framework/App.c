@@ -114,7 +114,7 @@ int32 App_Run(void)
 				render();
 
 				if (Scene_IsGameClose()) {
-					event.type = SDL_QUIT;
+					break;
 				}
 			}
 		}
