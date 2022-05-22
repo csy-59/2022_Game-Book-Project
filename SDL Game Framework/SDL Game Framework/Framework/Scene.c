@@ -1153,12 +1153,14 @@ void release_main(void)
 	MainScene* data = (MainScene*)g_Scene.Data;
 
 	Scene_Clear(&data->Scene);
-
-	Image_FreeImage(&data->BlackOutImage);
-	Text_FreeText(&data->NullText);
-	Image_FreeImage(&data->OptionPointImage);
-	data->ShowText = 0;
 	data->CurrentBGImage = NULL;
+	Image_FreeImage(&data->BlackOutImage);
+	Image_FreeImage(&data->OptionPointImage);
+	data->ShowText = NULL;
+	Text_FreeText(&data->NullText);
+	Image_FreeImage(&data->UiImage);
+	Image_FreeImage(&data->PopupImage);
+	data->ShowText = 0;
 
 	SafeFree(g_Scene.Data);
 }
