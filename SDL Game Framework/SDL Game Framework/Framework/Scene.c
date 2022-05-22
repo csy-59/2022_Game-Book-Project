@@ -25,7 +25,7 @@ typedef enum TitleMenu {
 
 typedef struct TitleSceneData
 {
-	Text   LoadingText;
+	Text	LoadingText;	
 	int32   FontSize;
 
 	Image   TitleImage;
@@ -37,8 +37,8 @@ typedef struct TitleSceneData
 	Image	StartImage;
 	Image	EndingImage;
 
-	Image    BlackOutImage;
-	int32    BlackOutAlpha;
+	Image   BlackOutImage;
+	int32   BlackOutAlpha;
 
 } TitleSceneData;
 
@@ -244,6 +244,7 @@ void GetSceneData(int32 sceneNum, SceneStruct* scene) {
 	memset(&csv, 0, sizeof(CsvFile));
  	CreateCsvFile(&csv, CSV_FILE_NAME);
 
+	//이상한 씬넘버가 들어오면 나가기
 	if (csv.Items[sceneNum] == NULL) {
 		printf("ERROR!!! WORNG SCENE NUMBER");
 		return;
@@ -259,7 +260,6 @@ void GetSceneData(int32 sceneNum, SceneStruct* scene) {
 	//bg Image
 	Image_LoadImage(&scene->BGImage, ParseToAscii(csv.Items[sceneNum][columCount++]));
 	//bgm
-	//Audio_LoadMusic(&Scenes[sceneNum].BGM, ParseToAscii(csv.Items[i][columCount++]));
 	scene->BGMNumber = ParseToInt(csv.Items[sceneNum][columCount++]);
 		
 	//배경 전환 이미지
@@ -308,11 +308,8 @@ void GetSceneData(int32 sceneNum, SceneStruct* scene) {
 	//화면 밀기 효과(수정 요함!)
 	scene->ImagePushingType = ParseToInt(csv.Items[sceneNum][columCount++]);
 	scene->ImagePushingTiming = ParseToInt(csv.Items[sceneNum][columCount++]);
-	//scene->ImagePushingType = -1;
-	//scene->ImagePushingTiming = -1;
 	scene->ImagePushingX = 0;
 	scene->ImagePushingY = 0;
-	//columCount += 2;
 
 	//텍스트 데이터 저장
 	int32 dialogCount = ParseToInt(csv.Items[sceneNum][columCount++]);
@@ -539,22 +536,27 @@ void log2OnFinished(int32 channel)
 }
 #pragma endregion
 
-bool s_IsEndingScene = false;
-static int32 s_CurrentScene = 73;
+bool s_IsEndingScene = false;		//엔딩 모음집과 연결되었는지 확인
+static int32 s_CurrentScene = 54;	//현재 씬 넘버
 
 #pragma region MainScene
 typedef struct tagMainScene {
-	SceneStruct Scene;
-	bool        isEndScene;
-	int32		CurrentOptionNumber;
-	int32		CurrentTextNumber;
-	SDL_Color	OptionColors[MAX_OPTION_COUNT];
-	Image*		CurrentBGImage;
-	int32		BGAlpha;
-	Image		BlackOutImage;
-	int32		BlackOutAlpha;
-	float		ElapsedTime;
-	float		ElapsedShakingTime;
+	SceneStruct Scene;								//씬 정보			
+
+	int32		CurrentOptionNumber;				//현재 선택중인 선택지 번호
+	SDL_Color	OptionColors[MAX_OPTION_COUNT];		//선택지 마다의 색 표현. 이걸 활용하여 투명도를 조절한다.
+
+	int32		CurrentTextNumber;					//현재 보여주고 있는 텍스트 번호
+
+	Image*		CurrentBGImage;						//현재 보여주고 있는 배경 이미지. 다른것이 아닌 이것만 랜더 해준다.
+	int32		BGAlpha;							//배경화면의 투명도. 배경 전환시 사용
+
+	Image		BlackOutImage;						//씬 이동시 페이드 인/아웃에 적용할 검은 배경
+	int32		BlackOutAlpha;						//검은 배경의 투명도
+	
+	float		ElapsedTime;						//두근두근 효과에 사용할 시간
+	float		ElapsedShakingTime;					//화면 흔들림 효과에 적용할 시간
+
 	bool isSceneChanging;
 	bool showOptions;
 	bool isBGChanged;
@@ -722,8 +724,6 @@ void init_main(void)
 
 	GetSceneData(s_CurrentScene, &data->Scene);
 
-	//data->Scene = &Scenes[s_CurrentScene];
-	data->isEndScene = false;
 	data->CurrentOptionNumber = 0;
 	//현재 텍스트 번째 수
 	data->CurrentTextNumber = 0;
@@ -933,7 +933,7 @@ void update_main(void)
 				}
 			}
 
-			//위 아래 키로
+			//위 아래 키로 선택지 선택
 			if (Input_GetKeyDown(VK_UP)) {
 				if (data->CurrentOptionNumber > 0) {
 					data->CurrentOptionNumber--;
@@ -1002,6 +1002,7 @@ void update_main(void)
 		}
 	}
 
+	//팝업
 	if (data->isShowingPopUp) {
 		if (Input_GetKeyDown(VK_RETURN)) {
 			data->isSceneChanging = true;
@@ -1035,27 +1036,29 @@ void update_main(void)
 			}
 			//아이템 이동
 			else if (data->Scene.ImagePushingType == 1) {
-				//특정 씬에서는 좌우로
-				if (s_CurrentScene != 107) {
-					//아직 끝으로 가지 않았을 경우
-					if (data->Scene.ImagePushingY > (data->Scene.ItemImage.Height) * -1) {
-						data->Scene.ImagePushingY -= SCROLE_SPEED;
-					}
-					//끝에 다다랐을 때
-					else {
-						data->isImagePushing = false;
-					}
-				}
-				else {
-					//아직 끝으로 가지 않았을 경우
-					if (data->Scene.ImagePushingX > (data->Scene.ItemImage.Width) * -1) {
-						data->Scene.ImagePushingX -= SCROLE_SPEED;
-					}
-					//끝에 다다랐을 때
-					else {
-						data->isImagePushing = false;
-					}
+				////특정 씬에서는 좌우로
+				//if (s_CurrentScene != 107) {
+				//	//아직 끝으로 가지 않았을 경우
+				//	if (data->Scene.ImagePushingY > (data->Scene.ItemImage.Height) * -1) {
+				//		data->Scene.ImagePushingY -= SCROLE_SPEED;
+				//	}
+				//	//끝에 다다랐을 때
+				//	else {
+				//		data->isImagePushing = false;
+				//	}
+				//}
+				//else {
+				//	
 
+				//}
+
+				//아직 끝으로 가지 않았을 경우
+				if (data->Scene.ImagePushingX > (data->Scene.ItemImage.Width) * -1) {
+					data->Scene.ImagePushingX -= SCROLE_SPEED;
+				}
+				//끝에 다다랐을 때
+				else {
+					data->isImagePushing = false;
 				}
 			}
 			//이상한 값
