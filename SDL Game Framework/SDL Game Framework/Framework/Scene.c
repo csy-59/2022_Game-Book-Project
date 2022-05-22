@@ -537,54 +537,74 @@ void log2OnFinished(int32 channel)
 #pragma endregion
 
 bool s_IsEndingScene = false;		//엔딩 모음집과 연결되었는지 확인
-static int32 s_CurrentScene = 54;	//현재 씬 넘버
+static int32 s_CurrentScene = 1;	//현재 씬 넘버
 
 #pragma region MainScene
 typedef struct tagMainScene {
-	SceneStruct Scene;								//씬 정보			
+	SceneStruct Scene;								//씬 정보	
 
-	int32		CurrentOptionNumber;				//현재 선택중인 선택지 번호
-	SDL_Color	OptionColors[MAX_OPTION_COUNT];		//선택지 마다의 색 표현. 이걸 활용하여 투명도를 조절한다.
-
-	int32		CurrentTextNumber;					//현재 보여주고 있는 텍스트 번호
-
-	Image*		CurrentBGImage;						//현재 보여주고 있는 배경 이미지. 다른것이 아닌 이것만 랜더 해준다.
-	int32		BGAlpha;							//배경화면의 투명도. 배경 전환시 사용
-
+	//씬 전환
 	Image		BlackOutImage;						//씬 이동시 페이드 인/아웃에 적용할 검은 배경
 	int32		BlackOutAlpha;						//검은 배경의 투명도
-	
-	float		ElapsedTime;						//두근두근 효과에 사용할 시간
-	float		ElapsedShakingTime;					//화면 흔들림 효과에 적용할 시간
+	bool		isSceneChanging;					//현재 씬이 전환되고 있는 중인지 판별
 
-	bool isSceneChanging;
-	bool showOptions;
-	bool isBGChanged;
-	bool showItemImage;
-	bool isItemPounding;
-	bool isItemBigger;
-	bool isImagePushing;
-	bool isShaking;
-	bool isEnter;
-	bool isShowingPopUp;
-	Text* ShowText;
-	Text NullText;
-	SDL_Color TextColor;
-	Image OptionPointImage;
-	int32 CurrentBGChangeNumber;
-	int32 CurrentSoundEffectNumber;
-	Image UiImage;
-	Image PopupImage;
+	//배경
+	Image*		CurrentBGImage;						//현재 보여주고 있는 배경 이미지. 다른것이 아닌 이것만 랜더 해준다.
+	int32		CurrentBGChangeNumber;				//현재 바꿔진 배경 화면 번수
+	int32		BGAlpha;							//배경화면의 투명도. 배경 전환시 사용
+	bool		isBGChanged;						//배경화면이 전환중인지
+	//기타 화면
+	Image		UiImage;							//UI 화면
+	Image		PopupImage;							//팝업 화면
+	bool		isShowingPopUp;						//팝업 화면을 보여주고 있는지
+
+	//텍스트
+	Text*		ShowText;							//표현해야하는 텍스트 배열
+	Text		NullText;							//텍스트에 사용할 빈 텍스트
+	SDL_Color	TextColor;							//텍스트의 색상. 여기서 투명도 조절로 텍스트 페이드 인/아웃 처리
+	int32		CurrentTextNumber;					//현재 보여주고 있는 텍스트 번호
+
+	//선택지
+	Image		OptionPointImage;					//선택지를 선택중인걸 확인 시켜줄 주사기 포인터
+	SDL_Color	OptionColors[MAX_OPTION_COUNT];		//선택지 마다의 색 표현. 이걸 활용하여 투명도를 조절한다.
+	int32		CurrentOptionNumber;				//현재 선택중인 선택지 번호
+	bool		showOptions;						//선택지를 보여줘야 하는지
+	
+	//아이템
+	bool		showItemImage;						//아이템 이미지를 보여줘야 할지 판별
+
+	//두근거리는 효과
+	float		ElapsedTime;						//두근두근 효과에 사용할 시간
+	bool		isItemPounding;						//두근 거리는 효과를 보여줘야할지
+	bool		isItemBigger;						//두근 거리는 효과에서 커져야 할지
+	
+	//화면 흔들림
+	float		ElapsedShakingTime;					//화면 흔들림 효과에 적용할 시간
+	bool		isShaking;							//화면 흔들림 효과가 적용되고 있는지
+	bool		isEnter;							//몰?루
+
+	//이미지 밀기
+	bool		isImagePushing;						//화면을 밀고 있는지 판별
+
+	//효과음
+	int32		CurrentSoundEffectNumber;			//현재 표현중인 효과음 번수
+
 } MainScene;
 
-static int32 SCROLE_SPEED = 20;
+static int32 SCROLE_SPEED = 20;						//화면 밀기 속도
 
-static Music CurrentBGM;
-static int32 CurrentBGMNumber = BGM_TITLE;
+static Music CurrentBGM;							//현재 플래이 중인 bgm
+static int32 CurrentBGMNumber = BGM_TITLE;			//현재 플래이 중인 bgm 번호
 
+//bgm 변경
 void ChangeBGM(int32 BGMNum) {
+	//기존 음악 free
 	Audio_FreeMusic(&CurrentBGM);
+
+	//새로운 넘버로 현재 플래이 중인 음악 번호 수정
 	CurrentBGMNumber = BGMNum;
+
+	//번호에 따라 다른 음악 출력(상단 BGM_TYPE 열거채 참고)
 	switch (BGMNum) {
 	case BGM_TITLE:
 		Audio_LoadMusic(&CurrentBGM, "title.mp3");
@@ -634,64 +654,209 @@ void ChangeBGM(int32 BGMNum) {
 	}
 }
 
-bool IsThisEndingShown(int32 SceneNum) {
+//엔딩 모음집 관련 파일 입출력
+//해당 엔딩을 보았는지
+int32 IsThisEndingShown(int32 SceneNum) {
 	FILE* fp = NULL;
 
 	//우선 파일을 읽어서 데이터를 받아 어디에 저장할지 판별한다.
 	errno_t err = fopen_s(&fp, "Asset/Data/endingLog.txt", "r");
 	
+	//파일을 열수 없으면 에러 출력
 	if (err != 0) {
 		printf("ERROR!!! CAN'T READ endingLog.txt\n");
 		return;
 	}
 
-	char endNum[128] = "";
-	while (fgets(endNum, sizeof(endNum), fp) != NULL) {
-		int32 num = atoi(endNum);
-		printf("%d\n", num);
-		if (num == SceneNum) {
-			fclose(fp);
-			return true;
-		}
-		else if (num > SceneNum) {
-			fclose(fp);
-			return false;
-		}
-		endNum[0] = '\n';
-	}
-	fclose(fp);
-
-	return false;
-}
-void RecordThisEnding(int32 SceneNum) {
-
-	FILE* fp = NULL;
-
-	fopen_s(&fp, "Asset/Data/endingLog.txt", "r");
-	if (fp == NULL) {
-		printf("ERROR!!! CAN'T READ endingLog.txt\n");
-		return;
-	}
-
-	//for (int32 i = 0; i < 17; i++) {
-	//	IsThisEndingShown(i + 121);
-	//	printf("\n");
-	//}
-
-	bool endingList[17] = { false };
-	endingList[SceneNum - 121] = true;
-	char endNum[128] = "";
+	//파일 값 저장
+	char endNum[256] = "";
+	char* endNumPointer = NULL;
+	char* spaceSearchPointer = NULL;
+	bool isEndingShown = false;
 
 	while (fgets(endNum, sizeof(endNum), fp) != NULL) {
+		int32 tempEndNum = 0;//임시로 저장해줄 곳
 		if (strlen(endNum) != 0) {
-			int32 num = atoi(endNum);
-			endingList[num - 121] = true;
-			endNum[0] = '\n';
+			spaceSearchPointer = strtok_s(endNum, ",", &endNumPointer);
+			while (spaceSearchPointer != NULL) {
+				if (tempEndNum == 0) {
+					tempEndNum = atoi(spaceSearchPointer);
+					if (tempEndNum == SceneNum) {
+						isEndingShown = true;
+					}
+				}
+				else if (tempEndNum > SceneNum) {
+					fclose(fp);
+					return -1;
+				}
+				else if(isEndingShown) {
+					int32 tempPrevNum = atoi(spaceSearchPointer);
+					fclose(fp);
+					return tempPrevNum;
+				}
+				spaceSearchPointer = strtok_s(NULL, ",", &endNumPointer);
+			}
+			endNumPointer = NULL;
 		}
 		else {
 			break;
 		}
+	}
+	fclose(fp);
 
+	return -1;
+}
+//엔딩 저장
+void RecordThisEnding(int32 SceneNum) {
+	int32 EndingNum = 0;
+
+	//엔딩씬 바로 전 씬만 저장
+ 	switch (SceneNum) {
+	case 9:
+	case 49:
+	case 55:
+	case 82:
+	case 104:
+	case 113:
+		EndingNum = 121;
+		break;
+
+	case 4:
+	case 14:
+		EndingNum = 122;
+		break;
+
+	case 17:
+	case 44:
+		EndingNum = 123;
+		break;
+
+	case 19:
+	case 34:
+	case 38:
+	case 43:
+		EndingNum = 124;
+		break;
+
+	case 27:
+		EndingNum = 125;
+		break;
+
+	case 46:
+		EndingNum = 126;
+		break;
+
+	case 99:
+		EndingNum = 127;
+		break;
+
+	case 51:
+		EndingNum = 128;
+		break;
+
+	case 57:
+		EndingNum = 129;
+		break;
+
+	case 58:
+	case 63:
+	case 80:
+	case 105:
+		EndingNum = 130;
+		break;
+
+	case 61:
+	case 70:
+	case 108:
+		EndingNum = 131;
+		break;
+
+	case 73:
+	case 96:
+	case 115:
+		EndingNum = 132;
+		break;
+
+	case 86:
+		EndingNum = 133;
+		break;
+
+	case 87:
+		EndingNum = 134;
+		break;
+
+	case 118:
+		EndingNum = 135;
+		break;
+
+	case 102:
+		EndingNum = 136;
+		break;
+		
+	case 120:
+		EndingNum = 137;
+		break;
+
+	default: 
+		return;
+		break;
+	}
+
+	FILE* fp = NULL;
+	fopen_s(&fp, "Asset/Data/endingLog.txt", "r");
+
+	//파일이 열리지 않으면 에러 출력
+	if (fp == NULL) {
+		printf("ERROR!!! CAN'T READ endingLog.txt\n");
+		fclose(fp);
+		return;
+	}
+
+	//엔딩 리스트를 불러와 해당 엔딩을 보았는지 확인하고 저장한다.
+	bool endingList[17] = { false }; // 엔딩 봤는지 여부
+	int32 endingPrevList[17] = { 0 }; // 엔딩 전 씬이 어딘지
+
+	//지금 들어온 값 저장
+	endingList[EndingNum - 121] = true;
+	endingPrevList[EndingNum - 121] = SceneNum;
+
+	//파일 값 저장
+	char endNum[256] = "";
+	char* endNumPointer = NULL;
+	char* spaceSearchPointer = NULL;
+	char changeNum[256] = ""; //atoi로 변환 할 문자열 저장
+	int32 changeNumCount = 0;
+
+	while (fgets(endNum, sizeof(endNum), fp) != NULL) {
+		int32 tempEndNum = 0;//임시로 저장해줄 곳
+		if (strlen(endNum) != 0) {
+			spaceSearchPointer = strtok_s(endNum, ",", &endNumPointer);
+			while (spaceSearchPointer != NULL) {
+				if (tempEndNum == 0) {
+					tempEndNum = atoi(spaceSearchPointer);
+					endingList[tempEndNum - 121] = true;
+				}
+				else {
+					int32 prevSceneNum = atoi(spaceSearchPointer);
+					if (tempEndNum == EndingNum) {
+						if (prevSceneNum > SceneNum) {
+							endingPrevList[tempEndNum - 121] = prevSceneNum;
+						}
+						else {
+							endingPrevList[tempEndNum - 121] = SceneNum;
+						}
+					}
+					else {
+						endingPrevList[tempEndNum - 121] = prevSceneNum;
+					}
+				}
+				spaceSearchPointer = strtok_s(NULL, ",", &endNumPointer);
+			}
+			endNumPointer = NULL;
+		}
+		else {
+			break;
+		}
 	}
 	fclose(fp);
 
@@ -702,38 +867,52 @@ void RecordThisEnding(int32 SceneNum) {
 		return;
 	}
 
+	//데이터에 넣을 값 지정
 	endNum[0] = '\0';
 	for (int32 i = 0; i < 17; i++) {
 		if (endingList[i]) {
 			char tempNum[10];
 			_itoa_s(i + 121, tempNum, sizeof(tempNum), 10);
 			strcat_s(endNum, sizeof(endNum), tempNum);
+			strcat_s(endNum, sizeof(endNum), ",");
+			_itoa_s(endingPrevList[i], tempNum, sizeof(tempNum), 10);
+			strcat_s(endNum, sizeof(endNum), tempNum);
 			strcat_s(endNum, sizeof(endNum), "\n");
 		}
 	}
 	fputs(endNum, fp);
+
 	fclose(fp);
 }
 
 void init_main(void)
 {
+	//기본 데이터 가져오기
 	g_Scene.Data = malloc(sizeof(MainScene));
 	memset(g_Scene.Data, 0, sizeof(MainScene));
 
 	MainScene* data = (MainScene*)g_Scene.Data;
 
+	//씬 정보 받기
 	GetSceneData(s_CurrentScene, &data->Scene);
 
-	data->CurrentOptionNumber = 0;
-	//현재 텍스트 번째 수
-	data->CurrentTextNumber = 0;
-	//암전 효과
-	data->BlackOutAlpha = 255;
-	Image_LoadImage(&data->BlackOutImage, "black.jpg");
-	Image_SetAlphaValue(&data->BlackOutImage, data->BlackOutAlpha);
-	//시간 관련
-	data->ElapsedTime = 0.0f;
-	//BGM 관련
+
+	//####씬 전환
+	data->isSceneChanging = false; //씬 전환중인지
+
+
+	//####배경
+	data->CurrentBGImage = &data->Scene.BGImage; //현재 보여주는 bg 이미지
+	data->BGAlpha = 255;
+	data->CurrentBGChangeNumber = 0; //현재 배경 번호
+	data->isBGChanged = false; //배경 변하고 있는지
+	//기타 화면
+	Image_LoadImage(&data->UiImage, "UI.jpg"); //UI 이미지
+	Image_LoadImage(&data->PopupImage, "PopUp.png"); //팝업 이미지
+	data->isShowingPopUp = false; //팝업 화면 띄우고 있는지
+
+
+	//####BGM 관련
 	if (CurrentBGMNumber != data->Scene.BGMNumber) {
 		ChangeBGM(data->Scene.BGMNumber);
 		Audio_PlayFadeIn(&CurrentBGM, INFINITY_LOOP, 2000);
@@ -743,66 +922,76 @@ void init_main(void)
 		Audio_PlayFadeIn(&CurrentBGM, INFINITY_LOOP, 2000);
 	}
 
-	printf("%d\n", CurrentBGMNumber);
 
-	//Audio_PlayFadeIn(&data->Scene->BGM, INFINITY_LOOP, 2000);
-	//필요한 NULLText 세팅
-	Text_CreateText(&data->NullText, TextFont, 25, L"", 0);
-	//선택지 표시 이미지 세팅
-	Image_LoadImage(&data->OptionPointImage, SRINJ_IMAGE_FILE);
+	//####텍스트
+	data->CurrentTextNumber = 0; //현재 텍스트 번째 수 초기화
+	Text_CreateText(&data->NullText, TextFont, 25, L"", 0); //필요한 NULLText 세팅
+
+	data->TextColor.a = 255; //텍스트 색상 조절
+	data->TextColor.r = 255;
+	data->TextColor.g = 255;
+	data->TextColor.b = 255;
+
+	data->ShowText = NULL; //표현할 텍스트 초기화
+
+
+	//####선택지
+	data->CurrentOptionNumber = 0; //현재 옵션 번호 초기화
+	data->showOptions = false; //선택지 보여주는지
+	
+	Image_LoadImage(&data->OptionPointImage, SRINJ_IMAGE_FILE); //선택지 표시 이미지 세팅
 	data->OptionPointImage.ScaleX = 0.35f;
 	data->OptionPointImage.ScaleY = 0.35f;
-
-	//현재 보여주는 bg 이미지
-	data->CurrentBGImage = &data->Scene.BGImage;
-	data->BGAlpha = 255;
-
-	//UI 이미지
-	Image_LoadImage(&data->UiImage, "UI.jpg");
-
-	//팝업 이미지
-	Image_LoadImage(&data->PopupImage, "PopUp.png");
-
-	//선택지 텍스트 요소 값
-	for (int32 i = 0; i < data->Scene.OptionCount;i++) {
+	
+	for (int32 i = 0; i < data->Scene.OptionCount;i++) { //선택지 텍스트 요소 값
 		data->OptionColors[i].a = 125;
 		data->OptionColors[i].r = 225;
 		data->OptionColors[i].g = 225;
 		data->OptionColors[i].b = 225;
 	}
 
-	data->TextColor.a = 255;
-	data->TextColor.r = 255;
-	data->TextColor.g = 255;
-	data->TextColor.b = 255;
 
-	data->ElapsedTime = 0.0f;
-	data->ElapsedShakingTime = 0.0f;
+	//####아이템
+	data->showItemImage = false; //아이템 이미지를 보여주고 있는지
 
-	data->isSceneChanging = false;
-	data->showOptions = false;
-	data->isBGChanged = false;
-	data->showItemImage = false;
-	data->isItemPounding = false;
-	data->isItemBigger = false;
-	data->isImagePushing = false;
-	data->isShaking = false;
-	data->isEnter = false;
-	data->isShowingPopUp = false;
-	data->ShowText = NULL;
-	data->CurrentBGChangeNumber = 0;
-	data->CurrentSoundEffectNumber = 0;
+
+	//####두근거리는 효과
+	data->ElapsedTime = 0.0f; //두근 거리는 효과에서 사용하는 시간
+
+
+	//####화면 흔들림
+	data->ElapsedShakingTime = 0.0f; //화면 흔들리는 시간 초기화
+	data->isShaking = false; //흔들림 효과 중인지
+	data->isEnter = false; //몰?루
+
+
+	//####이미지 밀기
+	data->isImagePushing = false; //이미지 미는 중인지
+	data->isItemPounding = false; //두근거리는 효과 적용중인지
+	data->isItemBigger = false; //두근거리는 효과에서 크기가 커져야 하는지
+
+
+	//####효과음
+	data->CurrentSoundEffectNumber = 0; //효과음 번호
+
+
+	//##암전 효과
+	data->BlackOutAlpha = 255;
+	Image_LoadImage(&data->BlackOutImage, "black.jpg");
+	Image_SetAlphaValue(&data->BlackOutImage, data->BlackOutAlpha);
+
 
 	//엔딩 씬이라면 파일에 저장
-	if (s_CurrentScene >= 121 && s_CurrentScene < 138) {
-		RecordThisEnding(data->Scene.SceneNumber);
-	}
+	RecordThisEnding(data->Scene.SceneNumber);
 
+
+	//현재 씬이 크래딧이면 화면 밀기 속도 조절
 	if (s_CurrentScene == 138) {
 		SCROLE_SPEED = 3;
 	}
 }
 
+//시간 남으면 정리할 예정
 void update_main(void)
   {
   	MainScene* data = (MainScene*)g_Scene.Data;
@@ -1160,15 +1349,6 @@ void render_main(void)
 
 	//아이템 이미지 출력
 	if (data->showItemImage) {
-		//if (!isItemPounding) {
-		//	Renderer_DrawImage(&data->Scene->ItemImage, (WINDOW_WIDTH - data->Scene->ItemImage.Width) / 2, (WINDOW_HEIGHT - data->Scene->ItemImage.Height) / 2 - 100);
-		//}
-		//else {
-		//	Renderer_DrawImage(&data->Scene->ItemImage, 
-		//		(WINDOW_WIDTH - data->Scene->ItemImage.Width + data->Scene->ItemImage.Width * (1.0f - data->Scene->ItemImage.ScaleX)) / 2,
-		//		(WINDOW_HEIGHT - data->Scene->ItemImage.Height + data->Scene->ItemImage.Height * (1.0f - data->Scene->ItemImage.ScaleY)) / 2 - 100);
-		//}
-
 		//두근 거리는 효과
 		if (data->isItemPounding) {
 			Renderer_DrawImage(&data->Scene.ItemImage,
@@ -1214,15 +1394,15 @@ void render_main(void)
 		Renderer_DrawImage(&data->OptionPointImage, 200 + data->Scene.ShakingX, finalTextPosY + 68 + data->CurrentOptionNumber * 40 + data->Scene.ShakingY);
 	}
 
-	if (!data->isShowingPopUp) {
-		//페이드 인 페이드 아웃 효과를 위한 검은색 배경
+	//팝업 출력
+	if (!data->isShowingPopUp) {//페이드 인 페이드 아웃 효과를 위한 검은색 배경의 투명도를 이용
 		Renderer_DrawImage(&data->BlackOutImage, data->Scene.ShakingX, data->Scene.ShakingY);
 	}
-	else if (!data->isSceneChanging) {
+	else if (!data->isSceneChanging) {//배경 전환중이 아니라면 팝업을 위로
 		Renderer_DrawImage(&data->BlackOutImage, data->Scene.ShakingX, data->Scene.ShakingY);
 		Renderer_DrawImage(&data->PopupImage, 0, 0);
 	}
-	else {
+	else { //배경 전환중이면 검은 화면이 위로
 		Renderer_DrawImage(&data->PopupImage, 0, 0);
 		Renderer_DrawImage(&data->BlackOutImage, data->Scene.ShakingX, data->Scene.ShakingY);
 	}
@@ -1233,15 +1413,23 @@ void release_main(void)
 {
 	MainScene* data = (MainScene*)g_Scene.Data;
 
+	//씬 정보
 	Scene_Clear(&data->Scene);
-	data->CurrentBGImage = NULL;
+
+	//씬 전환
 	Image_FreeImage(&data->BlackOutImage);
-	Image_FreeImage(&data->OptionPointImage);
-	data->ShowText = NULL;
-	Text_FreeText(&data->NullText);
+
+	//배경
+	data->CurrentBGImage = NULL;
 	Image_FreeImage(&data->UiImage);
 	Image_FreeImage(&data->PopupImage);
-	data->ShowText = 0;
+
+	//텍스트
+	Text_FreeText(&data->NullText);
+	data->ShowText = NULL;
+
+	//선택지
+	Image_FreeImage(&data->OptionPointImage);
 
 	SafeFree(g_Scene.Data);
 }
@@ -1253,8 +1441,7 @@ typedef struct EndSceneData
 {
 
 	Text    Gototitle;					//타이틀로 갈 수 있는 메세지
-	Text	SeeEnding[16];				//해당 엔딩을 본 경우 해당 엔딩 제목 표시
-	Text    NoSeeEnding[16];			//엔딩을 못 본 경우 ???처리
+	Text	SeeEnding[17];				//해당 엔딩을 본 경우 해당 엔딩 제목 표시
 	Music   TitleBGM;
 	float   Volume;
 	int32   FontSize;
@@ -1263,43 +1450,41 @@ typedef struct EndSceneData
 	int32	CurrentOptionNumberY;
 	int32	CurrentOptionNumber;		//메인으로 갈 시 해당 엔딩 신으로 갈 수 있게해줌 
 	Image   OptionPointImage;
-	int32   gotoscene[16];
+	int32   gotoscene[17];
 
 } EndSceneData;
 static int32 sceneNum2 = 0;
 void init_end(void)
 {
-	CsvFile csv2;
-	memset(&csv2, 0, sizeof(CsvFile));
-	CreateCsvFile(&csv2, CSV_FILE_NAME);
-
 	g_Scene.Data = malloc(sizeof(EndSceneData));
 	memset(g_Scene.Data, 0, sizeof(EndSceneData));
 
 	EndSceneData* data = (EndSceneData*)g_Scene.Data;
 
-
+	//기본 설정
 	data->FontSize = 25;
-	for (int i = 0; i < 16; ++i)
-	{
-		Text_CreateText(&data->NoSeeEnding[i], TextFont, data->FontSize, L"???????????", 13);
-	}
-	Text_CreateText(&data->Gototitle, TextFont, 20, L"ESC - 타이틀로                                          ENTER - 회상\0", wcslen(L"BACKSPACE - 타이틀로                                          ENTER - 회상\0"));
+	Text_CreateText(&data->Gototitle, TextFont, 20, L"ESC - 타이틀로                                          ENTER - 회상\0", 
+		wcslen(L"BACKSPACE - 타이틀로                                          ENTER - 회상\0"));
 
-	for (int32 j = 0; j < 16; j++)
+	CsvFile csv2;
+	memset(&csv2, 0, sizeof(CsvFile));
+	CreateCsvFile(&csv2, CSV_FILE_NAME);
+
+	for (int32 j = 0; j < 17; j++)
 	{
-		sceneNum2 = 121 + j;
-		if (IsThisEndingShown(sceneNum2))
+		int32 tempnum = j + 121;
+		int32 goToSceneTemp = IsThisEndingShown(tempnum);
+		if (goToSceneTemp != -1)
 		{
-			wchar_t* SceneNameTemp2 = ParseToUnicode(csv2.Items[sceneNum2][1]);
-			data->gotoscene[j] = ParseToInt(csv2.Items[sceneNum2][44]);
+			wchar_t* SceneNameTemp2 = ParseToUnicode(csv2.Items[tempnum][1]);
+			data->gotoscene[j] = goToSceneTemp;
 
 			Text_CreateText(&data->SeeEnding[j], TextFont, 25, SceneNameTemp2, wcslen(SceneNameTemp2));
 		}
 		else
 		{
 			data->gotoscene[j] = -1;
-			Text_CreateText(&data->SeeEnding[j], TextFont, 25, L"", wcslen(L""));
+			Text_CreateText(&data->SeeEnding[j], TextFont, data->FontSize, L"???????????", 13);
 		}
 	}
 	FreeCsvFile(&csv2);
@@ -1314,7 +1499,7 @@ void init_end(void)
 	data->OptionPointImage.ScaleY = 0.02f;
 
 
-	Image_LoadImage(&data->TitleImage, "end.jpg");
+	Image_LoadImage(&data->TitleImage, "end.png");
 
 
 	Audio_LoadMusic(&data->TitleBGM, "title.mp3");
@@ -1390,37 +1575,20 @@ void render_end(void)
 	//배경 이미지 출력
 	Renderer_DrawImage(&data->TitleImage, 0, 0);
 
-	Renderer_DrawTextShaded(&data->Gototitle, 1020, 850, Textcolor, color1);
-
-
 	//텍스트 출력
+	Renderer_DrawTextShaded(&data->Gototitle, 1020, 840, Textcolor, color1);
 
+	//옵션 출력
 	for (int i = 0; i < 16; ++i)
 	{
 		if (i < 8)
 		{
-			if (data->gotoscene[i] != -1)
-			{
-				Renderer_DrawTextShaded(&data->SeeEnding[i], 100, 50 + i * 100, Textcolor, color1);
-
-			}
-			else
-			{
-				Renderer_DrawTextShaded(&data->NoSeeEnding[i], 100, 50 + i * 100, Textcolor, color1);
-			}
+			Renderer_DrawTextShaded(&data->SeeEnding[i], 100, 50 + i * 100, Textcolor, color1);
 		}
 
 		if (i >= 8)
 		{
-			if (data->gotoscene[i] != -1)
-			{
-				Renderer_DrawTextShaded(&data->SeeEnding[i], 850, 50 + (i - 8) * 100, Textcolor, color1);
-
-			}
-			else
-			{
-				Renderer_DrawTextShaded(&data->NoSeeEnding[i], 850, 50 + (i - 8) * 100, Textcolor, color1);
-			}
+			Renderer_DrawTextShaded(&data->SeeEnding[i], 850, 50 + (i - 8) * 100, Textcolor, color1);
 		}
 		Renderer_DrawImage(&data->OptionPointImage, 50 + data->CurrentOptionNumberX, 50 + data->CurrentOptionNumberY * 100);
 	}
@@ -1430,8 +1598,9 @@ void release_end(void)
 {
 	EndSceneData* data = (EndSceneData*)g_Scene.Data;
 
-	Text_FreeText(&data->SeeEnding);
-	Text_FreeText(&data->NoSeeEnding);
+	for (int32 i = 0; i < 16; i++) {
+		Text_FreeText(&data->SeeEnding[i]);
+	}
 	Text_FreeText(&data->Gototitle);
 	Image_FreeImage(&data->OptionPointImage);
 	Image_FreeImage(&data->TitleImage);
