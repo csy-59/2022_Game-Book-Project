@@ -57,17 +57,10 @@ void init_title(void)
 	Image_LoadImage(&data->TitleImage, "title_2.jpg");
 
 	Image_LoadImage(&data->SrinjImage, SRINJ_IMAGE_FILE);
-	data->SX = 500;
+	data->SX = 550;
 	data->SY = 750;
 	Image_LoadImage(&data->StartImage, "start_button.png");
-	//data->SX = (WINDOW_WIDTH / 2) - (data->StartImage.Width / 2);
-	//data->SY = 500;
-	//Image_SetAlphaValue(&data->TitleImage, 255);
-	//
 	Image_LoadImage(&data->EndingImage, "ending_button.png");
-	//data->TX = (WINDOW_WIDTH / 2) - (data->EndingImage.Width / 2);
-	//data->TY = 650;
-	//Image_SetAlphaValue(&data->EndingImage, 125);
 
 	Audio_LoadMusic(&TitleBGM, TITLE_MUSIC);
 
@@ -78,10 +71,6 @@ void init_title(void)
 	Image_SetAlphaValue(&data->BlackOutImage, data->BlackOutAlpha);
 
 	title = START;
-	//data->StartImage.ScaleX = 1.15f;
-	//data->StartImage.ScaleY = 1.15f;
-	//data->EndingImage.ScaleX = 1.0f;
-	//data->EndingImage.ScaleY = 1.0f;
 
 	Loading = false;
 }
@@ -100,14 +89,14 @@ void update_title(void)
 		if (Input_GetKeyDown(VK_UP))
 		{
 			title = START;
-			data->SX = 500;
+			data->SX = 550;
 			data->SY = 750;
 
 		}
 		if (Input_GetKeyDown(VK_DOWN))
 		{
 			title = ENDING;
-			data->SX = 500;
+			data->SX = 550;
 			data->SY = 800;
 		}
 		if (Input_GetKeyDown(VK_RETURN))
@@ -125,22 +114,6 @@ void update_title(void)
 
 			}
 		}
-
-		//switch(title) {
-		//case START:
-		//	data->StartImage.ScaleX = 1.15f;
-		//	data->StartImage.ScaleY = 1.15f;
-		//	data->EndingImage.ScaleX = 1.0f;
-		//	data->EndingImage.ScaleY = 1.0f;
-		//	break;
-		//
-		//case ENDING:
-		//	data->EndingImage.ScaleX = 1.15f;
-		//	data->EndingImage.ScaleY = 1.15f;
-		//	data->StartImage.ScaleX = 1.0f;
-		//	data->StartImage.ScaleY = 1.0f;
-		//	break;
-		//}
 
 	}
 	Image_SetAlphaValue(&data->BlackOutImage, data->BlackOutAlpha);
@@ -237,7 +210,6 @@ typedef struct tagScene {
 	SoundEffect		SoundEffects[MAX_EFFECT_SOUND_COUNT];		//사운드 이펙트 배열
 	int32			AddSoundEffectTimings[MAX_EFFECT_SOUND_COUNT];//사운드 이펙트 타이밍
 
-	//Music			BGM;										//배경 음악
 	int32			BGMNumber;									//배경 음악 번호 위에 열거형에 정의
 
 	Image			ItemImage;									//아이템 이미지
@@ -568,6 +540,7 @@ void log2OnFinished(int32 channel)
 #pragma endregion
 
 bool s_IsEndingScene = false;
+static int32 s_CurrentScene = 54;
 
 #pragma region MainScene
 typedef struct tagMainScene {
@@ -602,17 +575,12 @@ typedef struct tagMainScene {
 	Image PopupImage;
 } MainScene;
 
-#define SCROLE_SPEED 7
+static int32 SCROLE_SPEED = 7;
 
-static int32 s_CurrentScene = 20;
 static Music CurrentBGM;
 static int32 CurrentBGMNumber = BGM_TITLE;
 
 void ChangeBGM(int32 BGMNum) {
-	if (CurrentBGMNumber == BGMNum) {
-		return;
-	}
-
 	Audio_FreeMusic(&CurrentBGM);
 	CurrentBGMNumber = BGMNum;
 	switch (BGMNum) {
@@ -654,6 +622,7 @@ void ChangeBGM(int32 BGMNum) {
 		break;
 	case BGM_JUNGHU:
 		Audio_LoadMusic(&CurrentBGM, "junghu.mp3");
+		break;
 	case -1:
 		Audio_LoadMusic(&CurrentBGM, "NoMusic.mp3");
 		break;
@@ -769,6 +738,12 @@ void init_main(void)
 		ChangeBGM(data->Scene.BGMNumber);
 		Audio_PlayFadeIn(&CurrentBGM, INFINITY_LOOP, 2000);
 	}
+	else if (!Audio_IsMusicPlaying() || Audio_IsMusicFading()) {
+		ChangeBGM(data->Scene.BGMNumber);
+		Audio_PlayFadeIn(&CurrentBGM, INFINITY_LOOP, 2000);
+	}
+
+	printf("%d\n", CurrentBGMNumber);
 
 	//Audio_PlayFadeIn(&data->Scene->BGM, INFINITY_LOOP, 2000);
 	//필요한 NULLText 세팅
@@ -822,6 +797,10 @@ void init_main(void)
 	if (s_CurrentScene >= 121 && s_CurrentScene < 138) {
 		RecordThisEnding(data->Scene.SceneNumber);
 	}
+
+	if (s_CurrentScene == 138) {
+		SCROLE_SPEED = 3;
+	}
 }
 
 void update_main(void)
@@ -843,7 +822,7 @@ void update_main(void)
 			else {
 				data->isBGChanged = false;
 				data->CurrentBGImage = &data->Scene.AdditionBGChangeImages[data->CurrentBGChangeNumber];
-				data->ShowText = &data->Scene.DialogList[data->CurrentTextNumber - 1];
+				data->ShowText = &data->Scene.DialogList[data->CurrentTextNumber];
 				data->TextColor.a = 0;
 			}
 		}
@@ -868,7 +847,7 @@ void update_main(void)
 			if (Input_GetKeyDown(VK_SPACE)) {
 				//출력 텍스트 조절
 				if (data->CurrentTextNumber < data->Scene.DialogCount) {
-					data->ShowText = &data->Scene.DialogList[data->CurrentTextNumber];
+					data->ShowText = &data->Scene.DialogList[data->CurrentTextNumber - 1];
 					data->CurrentTextNumber++;
 					Audio_FadeOutSoundEffect(800);
 					data->Scene.ShakingX = 0;
@@ -895,8 +874,8 @@ void update_main(void)
 					//이펙트 사운드 추가
 					for (int32 i = data->CurrentSoundEffectNumber; i < MAX_EFFECT_SOUND_COUNT; i++) {
 						if (data->Scene.AddSoundEffectTimings[i] > -1) {
-							if (data->CurrentTextNumber == data->Scene.AddSoundEffectTimings[i] - 1) {
-								Audio_PlaySoundEffect(&data->Scene.SoundEffects[i], 1);
+							if (data->CurrentTextNumber == data->Scene.AddSoundEffectTimings[i]) {
+								Audio_PlaySoundEffect(&data->Scene.SoundEffects[i], 0);
 								data->CurrentBGChangeNumber = i;
 								break;
 							}
@@ -1221,6 +1200,9 @@ void render_main(void)
 	}
 
 	//선택지 출력
+	if (finalTextPosY == 0) {
+		finalTextPosY = 645;
+	}
 	if (data->showOptions) {
 		for (int32 i = 0; i < data->Scene.OptionCount;i++) {
 			Renderer_DrawTextShaded(&data->Scene.OptionList[i], 250 + data->Scene.ShakingX, finalTextPosY + 65 + i * 40 + data->Scene.ShakingY, data->OptionColors[i], color1);
@@ -1518,7 +1500,6 @@ void Scene_Change(void)
 
 	s_nextScene = SCENE_NULL;
 }
-
 
 bool Scene_IsGameClose(void) {
 	return s_IsGameClose;
