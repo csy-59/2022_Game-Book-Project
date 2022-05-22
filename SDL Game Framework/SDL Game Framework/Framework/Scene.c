@@ -9,16 +9,23 @@ Scene g_Scene;
 
 static ESceneType s_nextScene = SCENE_NULL;
 
+#define TITLE_MUSIC "title.mp3"
+Music   TitleBGM;
+
 #pragma region TitleScene
 
 #define SOLID 0
 #define SHADED 1
 #define BLENDED 2
+typedef enum TitleMenu {
+	START,
+	ENDING,
+	EXIT
+} titleMenu;
 
 typedef struct TitleSceneData
 {
 	Text   GuideLine[1];
-	Music   TitleBGM;
 	float   Volume;
 	Text   EnterText;
 	Text   LoadingText;
@@ -32,9 +39,13 @@ typedef struct TitleSceneData
 	int32   SY;
 	Image    BlackOutImage;
 	int32    BlackOutAlpha;
+	Image	EndingImage;
+	int32	TX;
+	int32	TY;
 } TitleSceneData;
 
 bool Loading = false;
+titleMenu title = START;
 void init_title(void)
 {
 	g_Scene.Data = malloc(sizeof(TitleSceneData));
@@ -53,11 +64,17 @@ void init_title(void)
 	data->Y = 0;
 	Image_LoadImage(&data->StartImage, "start.png");
 	data->SX = (WINDOW_WIDTH / 2) - (data->StartImage.Width / 2);
-	data->SY = 650;
+	data->SY = 500;
+	Image_SetAlphaValue(&data->TitleImage, 255);
 
-	Audio_LoadMusic(&data->TitleBGM, "title.mp3");
+	Image_LoadImage(&data->EndingImage, "test.png");
+	data->TX = (WINDOW_WIDTH / 2) - (data->EndingImage.Width / 2);
+	data->TY = 650;
+	Image_SetAlphaValue(&data->EndingImage, 125);
 
-	Audio_PlayFadeIn(&data->TitleBGM, INFINITY_LOOP, 2000);
+	Audio_LoadMusic(&TitleBGM, TITLE_MUSIC);
+
+	Audio_PlayFadeIn(&TitleBGM, INFINITY_LOOP, 2000);
 
 	data->Volume = 1.0f;
 
@@ -65,23 +82,66 @@ void init_title(void)
 	Image_LoadImage(&data->BlackOutImage, "black.jpg");
 	Image_SetAlphaValue(&data->BlackOutImage, data->BlackOutAlpha);
 
+	title = START;
+
 	Loading = false;
 }
 
 void update_title(void)
 {
 	TitleSceneData* data = (TitleSceneData*)g_Scene.Data;
+
+
 	if (data->BlackOutAlpha > 0)
 	{
 		data->BlackOutAlpha -= 5;
 	}
 	if (data->BlackOutAlpha <= 0)
 	{
-		if (Input_GetKeyDown(VK_SPACE))
+		if (Input_GetKeyDown(VK_UP))
 		{
-			Loading = true;
-			Scene_SetNextScene(SCENE_CREDIT);
+			title = START;
+			Image_SetAlphaValue(&data->StartImage, 255);
+			Image_SetAlphaValue(&data->EndingImage, 125);
 		}
+		if (Input_GetKeyDown(VK_DOWN))
+		{
+			title = ENDING;
+			Image_SetAlphaValue(&data->StartImage, 125);
+			Image_SetAlphaValue(&data->EndingImage, 255);
+		}
+		if (Input_GetKeyDown(VK_RETURN))
+		{
+			if (title == START)
+			{
+				Loading = true;
+				Scene_SetNextScene(SCENE_CREDIT);
+			}
+			else if (title == ENDING)
+			{
+
+				Loading = true;
+				Scene_SetNextScene(SCENE_END);
+
+			}
+		}
+
+		switch(title) {
+		case START:
+			data->StartImage.ScaleX = 1.15f;
+			data->StartImage.ScaleY = 1.15f;
+			data->EndingImage.ScaleX = 1.0f;
+			data->EndingImage.ScaleY = 1.0f;
+			break;
+
+		case ENDING:
+			data->EndingImage.ScaleX = 1.15f;
+			data->EndingImage.ScaleY = 1.15f;
+			data->StartImage.ScaleX = 1.0f;
+			data->StartImage.ScaleY = 1.0f;
+			break;
+		}
+
 	}
 	Image_SetAlphaValue(&data->BlackOutImage, data->BlackOutAlpha);
 
@@ -102,14 +162,15 @@ void render_title(void)
 	{
 		if (elapsedTime >= 1.0f)
 		{
-			Renderer_DrawImage(&data->StartImage, data->SX, data->SY);
-			Renderer_DrawTextSolid(&data->EnterText, WINDOW_WIDTH / 2 - (data->EnterText.Length * data->FontSize) / 4, 950, color);
-
 			if (elapsedTime >= 1.5f)
 			{
 				elapsedTime = 0.0f;
 			}
 		}
+		Renderer_DrawImage(&data->StartImage, (WINDOW_WIDTH / 2) - (data->StartImage.Width * data->StartImage.ScaleX / 2),
+			500 - (data->StartImage.Height * data->StartImage.ScaleY - data->StartImage.Height));
+		Renderer_DrawImage(&data->EndingImage, (WINDOW_WIDTH / 2) - (data->EndingImage.Width * data->EndingImage.ScaleX / 2),
+			650 - (data->EndingImage.Height * data->EndingImage.ScaleY - data->EndingImage.Height));
 	}
 	else
 	{
@@ -149,11 +210,10 @@ enum BGMType {
 	BGM_ENDING_SAD,
 	BGM_ZOMBIES,
 	BGM_BSIN,
-	BGM_KIZUNGUNG,
-	BGM_IPARK_START_DRUM,
-	BGM_SHEEEIC,
-	BGM_JUNGHU,
-	BGM_J_Do
+	BGM_KIZUNGUNG = 12,
+	BGM_IPARK_START_DRUM = 13,
+	BGM_SHEEEIC = 15,
+	BGM_JUNGHU = 16,
 };
 
 #define MAX_BG_CHANGE_COUNT 4		//배경 이미지 최대로 바뀌는 갯수
@@ -410,7 +470,6 @@ typedef struct CreditSceneData
 	Text	EnterText;
 	int32	FontSize;
 	int32	RenderMode;
-	TitleSceneData TitleBGM;
 	Image	CreditImage[3];
 	int32	X;
 	int32	Y;
@@ -481,7 +540,7 @@ void release_credit(void)
 	CreditSceneData* data = (CreditSceneData*)g_Scene.Data;
 
 	Text_FreeText(&data->EnterText);
-	Audio_FreeMusic(&data->TitleBGM);
+	Audio_FreeMusic(&TitleBGM);
 
 	Image_FreeImage(&data->CreditImage[0]);
 	Image_FreeImage(&data->CreditImage[1]);
@@ -503,6 +562,8 @@ void log2OnFinished(int32 channel)
 	LogInfo("You can show this log on stopped the effect");
 }
 #pragma endregion
+
+bool s_IsEndingScene = false;
 
 #pragma region MainScene
 typedef struct tagMainScene {
@@ -576,33 +637,19 @@ void ChangeBGM(int32 BGMNum) {
 	case BGM_BSIN:
 		Audio_LoadMusic(&CurrentBGM, "Bsin.mp3");
 		break;
-	case BGM_BEGAUN_CUNG:
-		Audio_LoadMusic(&CurrentBGM, "Begaun_cungcung.mp3");
-		break;
-	case BGM_BEGAUN_UNG:
-		Audio_LoadMusic(&CurrentBGM, "Begaun_ungsung.mp3");
-		break;
-	case BGM_DUGENG:
-		Audio_LoadMusic(&CurrentBGM, "dugengdugen.mp3");
-		break;
 	case BGM_KIZUNGUNG:
 		Audio_LoadMusic(&CurrentBGM, "kizungung.mp3");
 		break;
 	case BGM_IPARK_START_DRUM:
 		Audio_LoadMusic(&CurrentBGM, "ipark_start_drum.mp3");
 		break;
-	case BGM_IPARK_START_RAT:
-		Audio_LoadMusic(&CurrentBGM, "ipark_start_rat.mp3");
-		break;
-	case BGM_IPARK_SHEEEIC:
+	case BGM_SHEEEIC:
 		Audio_LoadMusic(&CurrentBGM, "sheeeeeic.mp3");
 		break;
 	case BGM_JUNGHU:
-		Audio_LoadMusic(&CurrentBGM, "junghu.mp3"); 
-	case BGM_J_Do:
-		Audio_LoadMusic(&CurrentBGM, "J_Do.mp3");
+		Audio_LoadMusic(&CurrentBGM, "junghu.mp3");
 	case -1:
-		Audio_LoadMusic(&CurrentBGM, "noMusic.mp3");
+		Audio_LoadMusic(&CurrentBGM, "NoMusic.mp3");
 		break;
 	default:
 		printf("ERROR!!! WORNG BGM NUMBER\n");
@@ -941,6 +988,10 @@ void update_main(void)
 				//s_CurrentScene = data->Scene.NextSceneNumberList[data->CurrentOptionNumber];
 				Scene_SetNextScene(SCENE_MAIN);
 			}
+			else if (s_IsEndingScene) {
+				s_IsEndingScene = false;
+				Scene_SetNextScene(SCENE_END);
+			}
 			else {
 				//data->Scene.isShowedThisEnding = true;
 				//엔딩을 봤음을 기록
@@ -1206,6 +1257,199 @@ void release_main(void)
 
 #pragma endregion
 
+#pragma region EndScene
+typedef struct EndSceneData
+{
+
+	Text    Gototitle;					//타이틀로 갈 수 있는 메세지
+	Text	SeeEnding[16];				//해당 엔딩을 본 경우 해당 엔딩 제목 표시
+	Text    NoSeeEnding[16];			//엔딩을 못 본 경우 ???처리
+	Music   TitleBGM;
+	float   Volume;
+	int32   FontSize;
+	Image   TitleImage;
+	int32	CurrentOptionNumberX;
+	int32	CurrentOptionNumberY;
+	int32	CurrentOptionNumber;		//메인으로 갈 시 해당 엔딩 신으로 갈 수 있게해줌 
+	Image   OptionPointImage;
+	int32   gotoscene[16];
+
+} EndSceneData;
+static int32 sceneNum2 = 0;
+void init_end(void)
+{
+	CsvFile csv2;
+	memset(&csv2, 0, sizeof(CsvFile));
+	CreateCsvFile(&csv2, "csv_ver4.csv");
+
+	g_Scene.Data = malloc(sizeof(EndSceneData));
+	memset(g_Scene.Data, 0, sizeof(EndSceneData));
+
+	EndSceneData* data = (EndSceneData*)g_Scene.Data;
+
+
+	data->FontSize = 25;
+	for (int i = 0; i < 16; ++i)
+	{
+		Text_CreateText(&data->NoSeeEnding[i], TextFont, data->FontSize, L"???????????", 13);
+	}
+	Text_CreateText(&data->Gototitle, TextFont, 50, L"BACKSPACE 입력시 TITLE로 돌아갑니다", 27);
+
+	for (int32 j = 0; j < 16; j++)
+	{
+		sceneNum2 = 121 + j;
+		if (IsThisEndingShown(sceneNum2))
+		{
+			wchar_t* SceneNameTemp2 = ParseToUnicode(csv2.Items[sceneNum2][1]);
+			data->gotoscene[j] = ParseToInt(csv2.Items[sceneNum2][44]);
+
+			Text_CreateText(&data->SeeEnding[j], TextFont, 25, SceneNameTemp2, wcslen(SceneNameTemp2));
+		}
+		else
+		{
+			data->gotoscene[j] = -1;
+			Text_CreateText(&data->SeeEnding[j], TextFont, 25, L"", wcslen(L""));
+		}
+	}
+	FreeCsvFile(&csv2);
+
+
+	data->CurrentOptionNumberX = 0;
+	data->CurrentOptionNumberY = 0;
+	data->CurrentOptionNumber = 0;
+
+	Image_LoadImage(&data->OptionPointImage, "point.png");
+	data->OptionPointImage.ScaleX = 0.02f;
+	data->OptionPointImage.ScaleY = 0.02f;
+
+
+	Image_LoadImage(&data->TitleImage, "end.jpg");
+
+
+	Audio_LoadMusic(&data->TitleBGM, "title.mp3");
+
+	Audio_PlayFadeIn(&data->TitleBGM, INFINITY_LOOP, 2000);
+
+	data->Volume = 1.0f;
+}
+
+void update_end(void)
+{
+	EndSceneData* data = (EndSceneData*)g_Scene.Data;
+
+	if (Input_GetKeyDown(VK_UP))
+	{
+		if (data->CurrentOptionNumberY > 0)
+		{
+			data->CurrentOptionNumber--;
+			data->CurrentOptionNumberY--;
+		}
+	}
+
+	if (Input_GetKeyDown(VK_DOWN))
+	{
+		if (data->CurrentOptionNumberY < 7)
+		{
+			data->CurrentOptionNumber++;
+			data->CurrentOptionNumberY++;
+		}
+	}
+
+	if (Input_GetKeyDown(VK_LEFT))
+	{
+		if (data->CurrentOptionNumber > 7)
+		{
+			data->CurrentOptionNumberX -= 750;
+			data->CurrentOptionNumber -= 8;
+		}
+	}
+
+	if (Input_GetKeyDown(VK_RIGHT))
+	{
+		if (data->CurrentOptionNumber < 8)
+		{
+			data->CurrentOptionNumberX += 750;
+			data->CurrentOptionNumber += 8;
+		}
+	}
+
+	if (Input_GetKeyDown(VK_RETURN))
+	{
+		if (data->gotoscene[data->CurrentOptionNumber] != -1)
+		{
+			s_CurrentScene = data->gotoscene[data->CurrentOptionNumber];
+			s_IsEndingScene = true;
+			Scene_SetNextScene(SCENE_MAIN);
+		}
+	}
+	if (Input_GetKeyDown(VK_BACK))
+	{
+
+		Scene_SetNextScene(SCENE_TITLE);
+		Audio_Stop();
+	}
+
+}
+
+void render_end(void)
+{
+	EndSceneData* data = (EndSceneData*)g_Scene.Data;
+	SDL_Color color1 = { 0, 0, 0, 255 };
+	SDL_Color Textcolor = { 255, 255, 255, 255 };
+	//배경 이미지 출력
+	Renderer_DrawImage(&data->TitleImage, 0, 0);
+
+	Renderer_DrawTextShaded(&data->Gototitle, 250, 820, Textcolor, color1);
+
+
+	//텍스트 출력
+
+	for (int i = 0; i < 16; ++i)
+	{
+		if (i < 8)
+		{
+			if (data->gotoscene[i] != -1)
+			{
+				Renderer_DrawTextShaded(&data->SeeEnding[i], 50, 50 + i * 100, Textcolor, color1);
+
+			}
+			else
+			{
+				Renderer_DrawTextShaded(&data->NoSeeEnding[i], 50, 50 + i * 100, Textcolor, color1);
+			}
+		}
+
+		if (i >= 8)
+		{
+			if (data->gotoscene[i] != -1)
+			{
+				Renderer_DrawTextShaded(&data->SeeEnding[i], 800, 50 + (i - 8) * 100, Textcolor, color1);
+
+			}
+			else
+			{
+				Renderer_DrawTextShaded(&data->NoSeeEnding[i], 800, 50 + (i - 8) * 100, Textcolor, color1);
+			}
+		}
+		Renderer_DrawImage(&data->OptionPointImage, 0 + data->CurrentOptionNumberX, 50 + data->CurrentOptionNumberY * 100);
+	}
+}
+
+void release_end(void)
+{
+	EndSceneData* data = (EndSceneData*)g_Scene.Data;
+
+	Text_FreeText(&data->SeeEnding);
+	Text_FreeText(&data->NoSeeEnding);
+	Text_FreeText(&data->Gototitle);
+	Image_FreeImage(&data->OptionPointImage);
+	Image_FreeImage(&data->TitleImage);
+	Audio_FreeMusic(&data->TitleBGM);
+	SafeFree(g_Scene.Data);
+}
+
+#pragma endregion
+
 bool Scene_IsSetNextScene(void)
 {
 	if (SCENE_NULL == s_nextScene)
@@ -1223,6 +1467,7 @@ void Scene_SetNextScene(ESceneType scene)
 	assert(s_nextScene == SCENE_NULL);
 	assert(SCENE_NULL < scene&& scene < SCENE_MAX);
 
+	s_IsGameClose = false;
 	s_nextScene = scene;
 }
 
@@ -1254,6 +1499,12 @@ void Scene_Change(void)
 		g_Scene.Update = update_main;
 		g_Scene.Render = render_main;
 		g_Scene.Release = release_main;
+		break;
+	case SCENE_END:
+		g_Scene.Init = init_end;
+		g_Scene.Update = update_end;
+		g_Scene.Render = render_end;
+		g_Scene.Release = release_end;
 		break;
 	}
 
