@@ -169,6 +169,7 @@ void render_title(void)
 		}
 		Renderer_DrawImage(&data->StartImage, (WINDOW_WIDTH / 2) - (data->StartImage.Width * data->StartImage.ScaleX / 2), 750);
 		Renderer_DrawImage(&data->EndingImage, (WINDOW_WIDTH / 2) - (data->EndingImage.Width * data->EndingImage.ScaleX / 2), 800);
+		Renderer_DrawImage(&data->SrinjImage, data->SX, data->SY);
 	}
 	else
 	{
@@ -179,7 +180,6 @@ void render_title(void)
 		Renderer_DrawTextSolid(&data->LoadingText, WINDOW_WIDTH / 2 - (data->LoadingText.Length * data->FontSize) / 4 + 20, 820, color);
 	}
 
-	Renderer_DrawImage(&data->SrinjImage, data->SX, data->SY);
 }
 
 void release_title(void)
@@ -602,7 +602,9 @@ typedef struct tagMainScene {
 	Image PopupImage;
 } MainScene;
 
-static int32 s_CurrentScene = 1;
+#define SCROLE_SPEED 7
+
+static int32 s_CurrentScene = 20;
 static Music CurrentBGM;
 static int32 CurrentBGMNumber = BGM_TITLE;
 
@@ -893,7 +895,7 @@ void update_main(void)
 					//이펙트 사운드 추가
 					for (int32 i = data->CurrentSoundEffectNumber; i < MAX_EFFECT_SOUND_COUNT; i++) {
 						if (data->Scene.AddSoundEffectTimings[i] > -1) {
-							if (data->CurrentTextNumber == data->Scene.AddSoundEffectTimings[i]) {
+							if (data->CurrentTextNumber == data->Scene.AddSoundEffectTimings[i] - 1) {
 								Audio_PlaySoundEffect(&data->Scene.SoundEffects[i], 1);
 								data->CurrentBGChangeNumber = i;
 								break;
@@ -1044,8 +1046,8 @@ void update_main(void)
 			//배경 이동
 			if (data->Scene.ImagePushingType == 0) {
 				//아직 끝으로 가지 않았을 경우
-				if (data->Scene.ImagePushingY - 50 > (data->CurrentBGImage->Height - WINDOW_HEIGHT) * -1) {
-					data->Scene.ImagePushingY -= 50;
+				if (data->Scene.ImagePushingY - SCROLE_SPEED > (data->CurrentBGImage->Height - WINDOW_HEIGHT) * -1) {
+					data->Scene.ImagePushingY -= SCROLE_SPEED;
 				}
 				//끝에 다다랐을 때
 				else {
@@ -1058,7 +1060,7 @@ void update_main(void)
 				if (s_CurrentScene != 107) {
 					//아직 끝으로 가지 않았을 경우
 					if (data->Scene.ImagePushingY > (data->Scene.ItemImage.Height) * -1) {
-						data->Scene.ImagePushingY -= 50;
+						data->Scene.ImagePushingY -= SCROLE_SPEED;
 					}
 					//끝에 다다랐을 때
 					else {
@@ -1068,7 +1070,7 @@ void update_main(void)
 				else {
 					//아직 끝으로 가지 않았을 경우
 					if (data->Scene.ImagePushingX > (data->Scene.ItemImage.Width) * -1) {
-						data->Scene.ImagePushingX -= 50;
+						data->Scene.ImagePushingX -= SCROLE_SPEED;
 					}
 					//끝에 다다랐을 때
 					else {
@@ -1202,7 +1204,7 @@ void render_main(void)
 	}
 
 	//UI 출력
-	if (s_CurrentScene <= 121) {
+	if (s_CurrentScene < 121) {
 		Renderer_DrawImage(&data->UiImage, data->Scene.ShakingX, data->Scene.ShakingY);
 	}
 
