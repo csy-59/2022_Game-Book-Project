@@ -538,7 +538,7 @@ void log2OnFinished(int32 channel)
 #pragma endregion
 
 bool s_IsEndingScene = false;		//엔딩 모음집과 연결되었는지 확인
-static int32 s_CurrentScene = 71;	//현재 씬 넘버
+static int32 s_CurrentScene = 1;	//현재 씬 넘버
 
 #pragma region MainScene
 typedef struct tagMainScene {
