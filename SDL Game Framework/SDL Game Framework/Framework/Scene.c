@@ -18,6 +18,7 @@ static ESceneType s_nextScene = SCENE_NULL;
 
 Music   TitleBGM; //타이틀 bgm
 
+bool s_IsEndingScene = false;		//엔딩 모음집과 연결되었는지 확인
 
 #pragma region TitleScene
 //메인에서 판별
@@ -87,6 +88,8 @@ void init_title(void)
 	title = START;
 
 	Loading = false;
+	
+	s_IsEndingScene = false;
 }
 
 void update_title(void)
@@ -597,7 +600,6 @@ void log2OnFinished(int32 channel)
 }
 #pragma endregion
 
-bool s_IsEndingScene = false;		//엔딩 모음집과 연결되었는지 확인
 static int32 s_CurrentScene = 1;	//현재 씬 넘버
 
 #pragma region MainScene
@@ -1076,10 +1078,6 @@ void init_main(void)
 	Image_SetAlphaValue(&data->BlackOutImage, data->BlackOutAlpha);
 
 
-	//엔딩 씬이라면 파일에 저장
-	RecordThisEnding(data->Scene.SceneNumber);
-
-
 	//현재 씬이 크래딧이면 화면 밀기 속도 조절
 	if (s_CurrentScene == 138) 
 	{
@@ -1299,6 +1297,11 @@ void update_main(void)
 			}
 			else if (s_CurrentScene != -1 && !data->isShowingPopUp) 
 			{
+				if (s_CurrentScene >= 121) 
+				{
+					RecordThisEnding(data->Scene.SceneNumber);
+				}
+
 				Scene_SetNextScene(SCENE_MAIN);
 			}
 			else 
