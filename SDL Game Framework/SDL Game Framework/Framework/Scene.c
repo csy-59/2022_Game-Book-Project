@@ -1281,7 +1281,7 @@ void update_main(void)
 			{
 				if (s_CurrentScene != -1) 
 				{
-					for (int32 i = 0; i < data->Scene.OptionCount; i++) 
+					for (int32 i = 0; i < data->Scene.OptionCount + 1; i++) 
 					{
 						if (data->Scene.NextSceneNumberList[i] >= 121) 
 						{
@@ -1295,7 +1295,6 @@ void update_main(void)
 					s_IsEndingScene = false;
 					Scene_SetNextScene(SCENE_END);
 					s_CurrentScene = 1;
-
 				}
 			}
 			else if (s_CurrentScene != -1 && !data->isShowingPopUp) 
@@ -1389,13 +1388,17 @@ void update_main(void)
 				//끝에 다다랐을 때
 				else 
 				{
+					if (s_CurrentScene == 138) {
+						data->isSceneChanging = true;
+						s_CurrentScene = -1;
+					}
 					data->isImagePushing = false;
 				}
 			}
 			//아이템 이동
 			else if (data->Scene.ImagePushingType == 1) 
 			{
-				//아직 끝으로 가지 않았을 경우
+				//아직 끝으로 가지 않았을 경우 
 				if (data->Scene.ImagePushingX > (data->Scene.ItemImage.Width) * -1) 
 				{
 					data->Scene.ImagePushingX -= SCROLE_SPEED;
