@@ -3,14 +3,14 @@
 #include "Type.h"
 
 
-
+static bool s_IsGameClose = false;
 
 typedef struct Scene
 {
-	void (*Init)(void);		// ¾ÀÀ» ÃÊ±âÈ­ ÇÏ´Â ÇÔ¼ö
-	void (*Update)(void);	// ¾÷µ¥ÀÌÆ®
-	void (*Render)(void);	// ·»´õ
-	void (*Release)(void);	// ¾À¿¡¼­ »ç¿ëÇÑ ÀÚ¿øÀ» Á¤¸®
+	void (*Init)(void);		// ì”¬ì„ ì´ˆê¸°í™” í•˜ëŠ” í•¨ìˆ˜
+	void (*Update)(void);	// ì—…ë°ì´íŠ¸
+	void (*Render)(void);	// ë Œë”
+	void (*Release)(void);	// ì”¬ì—ì„œ ì‚¬ìš©í•œ ìì›ì„ ì •ë¦¬
 	void* Data;
 } Scene;
 
@@ -19,34 +19,33 @@ typedef enum SceneType
 	SCENE_NULL,
 	SCENE_TITLE,
 	SCENE_CREDIT,
-	SCENE_INTRO,
 	SCENE_MAIN,
-	SCENE_TEMP,
+	SCENE_END,
 	SCENE_MAX
 } ESceneType;
 
 extern Scene g_Scene;
 
 /// <summary>
-/// ´ÙÀ½ ¾ÀÀ¸·Î ÀüÈ¯µÉ ¿¹Á¤ÀÎ°¡?
+/// ë‹¤ìŒ ì”¬ìœ¼ë¡œ ì „í™˜ë  ì˜ˆì •ì¸ê°€?
 /// </summary>
-/// <returns>´ÙÀ½ ¾ÀÀ¸·Î ÀüÈ¯µÉ ¿¹Á¤ÀÌ¸é true, ¾Æ´Ï¸é false</returns>
+/// <returns>ë‹¤ìŒ ì”¬ìœ¼ë¡œ ì „í™˜ë  ì˜ˆì •ì´ë©´ true, ì•„ë‹ˆë©´ false</returns>
 bool Scene_IsSetNextScene(void);
 
 /// <summary>
-/// ´ÙÀ½ ¾ÀÀ» ÁöÁ¤ÇÑ´Ù.
+/// ë‹¤ìŒ ì”¬ì„ ì§€ì •í•œë‹¤.
 /// </summary>
-/// <param name="scene">¾À</param>
+/// <param name="scene">ì”¬</param>
 void Scene_SetNextScene(ESceneType scene);
 
 /// <summary>
-/// ¾À ÀüÈ¯
+/// ì”¬ ì „í™˜
 /// </summary>
 /// <param name=""></param>
 void Scene_Change(void);
 
 /// <summary>
-/// ¾À µ¥ÀÌÅÍ Á¤¸®
+/// ê²Œì„ì„ ë‹«ì•˜ëŠ”ì§€ í™•ì¸
 /// </summary>
 /// <param name=""></param>
-void Scene_Clear(void);
+bool Scene_IsGameClose(void);

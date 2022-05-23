@@ -34,7 +34,7 @@ void Renderer_DrawImage(const Image* image, int32 x, int32 y)
 	SDL_Rect rect = { .x = x, .y = y,
 		.w = image->Width * image->ScaleX,
 		.h = image->Height * image->ScaleY };
-	
+
 	SDL_RenderCopy(g_App.Renderer, image->Texture, NULL, &rect);
 }
 
@@ -59,6 +59,7 @@ void Renderer_DrawTextShaded(const Text* text, int32 x, int32 y, SDL_Color foreg
 	SDL_RenderCopy(g_App.Renderer, texture, NULL, &rect);
 
 	SDL_FreeSurface(surface);
+	SDL_DestroyTexture(texture);
 }
 
 void Renderer_DrawTextBlended(const Text* text, int x, int y, SDL_Color foreground)
@@ -71,5 +72,4 @@ void Renderer_DrawTextBlended(const Text* text, int x, int y, SDL_Color foregrou
 
 	SDL_FreeSurface(surface);
 	SDL_DestroyTexture(texture);
-
 }
