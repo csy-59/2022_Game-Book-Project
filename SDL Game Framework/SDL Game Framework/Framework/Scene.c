@@ -260,7 +260,6 @@ typedef struct tagScene
 
 void GetSceneData(int32 sceneNum, SceneStruct* scene) 
 {
-	//csv 파일 열기
 	CsvFile csv;
 	memset(&csv, 0, sizeof(CsvFile));
  	CreateCsvFile(&csv, CSV_FILE_NAME);
@@ -271,6 +270,7 @@ void GetSceneData(int32 sceneNum, SceneStruct* scene)
 		printf("ERROR!!! WORNG SCENE NUMBER");
 		return;
 	}
+
 
 	int32 columCount = 0;
 
@@ -500,6 +500,38 @@ void Scene_Clear(SceneStruct* scene)
 	for (int32 j = 0; j < scene->OptionCount;j++) 
 	{
 		Text_FreeText(&scene->OptionList[j]);
+	}
+}
+
+
+void Scene_Clear(void) {
+	if (isGotData) {
+		for (int32 i = 0; i < DataCount;i++) {
+			//이미지 해제
+			Image_FreeImage(&Scenes[i].BGImage);
+			if (Scenes[i].AddImageTiming > -1) {
+				Image_FreeImage(&Scenes[i].AdditionImage);
+			}
+
+			//오디오 해제
+			Audio_FreeMusic(&Scenes[i].BGM);
+			if (Scenes[i].EffectSoundTiming > -1) {
+				Audio_FreeSoundEffect(&Scenes[i].EffectSound);
+			}
+
+			//텍스트 해제
+			for (int32 j = 0; j < Scenes[i].DialogCount;j++) {
+				int32 k = 0;
+				while (Scenes[i].DialogList[j][k].Length > 0) {
+					Text_FreeText(&Scenes[i].DialogList[j][k]);
+					k++;
+				}
+				Text_FreeText(&Scenes[i].DialogList[j][k]);
+			}
+			for (int32 j = 0; j < Scenes[i].OptionCount;j++) {
+				Text_FreeText(&Scenes[i].OptionList[j]);
+			}
+		}
 	}
 }
 
@@ -984,6 +1016,7 @@ void init_main(void)
 	g_Scene.Data = malloc(sizeof(MainScene));
 	memset(g_Scene.Data, 0, sizeof(MainScene));
 
+
 	MainScene* data = (MainScene*)g_Scene.Data;
 
 	//씬 정보 받기
@@ -992,7 +1025,6 @@ void init_main(void)
 
 	//####씬 전환
 	data->isSceneChanging = false; //씬 전환중인지
-
 
 	//####배경
 	data->CurrentBGImage = &data->Scene.BGImage; //현재 보여주는 bg 이미지
@@ -1045,7 +1077,6 @@ void init_main(void)
 		data->OptionColors[i].g = 225;
 		data->OptionColors[i].b = 225;
 	}
-
 
 	//####아이템
 	data->showItemImage = false; //아이템 이미지를 보여주고 있는지
@@ -1164,6 +1195,7 @@ void update_main(void)
 								break;
 							}
 						}
+
 						else 
 						{
 							break;
@@ -1251,6 +1283,7 @@ void update_main(void)
 			data->OptionColors[data->CurrentOptionNumber].a = 255;
 
 			//선택지 선택
+
 			if (Input_GetKeyDown(VK_RETURN) && !data->isShowingPopUp) 
 			{
 				data->isSceneChanging = true;
