@@ -537,7 +537,7 @@ void log2OnFinished(int32 channel)
 #pragma endregion
 
 bool s_IsEndingScene = false;		//엔딩 모음집과 연결되었는지 확인
-static int32 s_CurrentScene = 45;	//현재 씬 넘버
+static int32 s_CurrentScene = 46;	//현재 씬 넘버
 
 #pragma region MainScene
 typedef struct tagMainScene {
@@ -1060,26 +1060,6 @@ void update_main(void)
 						}
 					}
 
-					//이펙트 사운드 추가
-					for (int32 i = data->CurrentSoundEffectNumber; i < MAX_EFFECT_SOUND_COUNT; i++) {
-						if (data->Scene.AddSoundEffectTimings[i] > -1)
-						{
-							if (data->CurrentTextNumber + 1 == data->Scene.AddSoundEffectTimings[i] && data->CurrentTextNumber == 0) {
-								Audio_PlaySoundEffect(&data->Scene.SoundEffects[i], 0);
-								data->CurrentBGChangeNumber = i;
-								break;
-							}
-							else if (data->CurrentTextNumber + 1 == data->Scene.AddSoundEffectTimings[i]) {
-								Audio_PlaySoundEffect(&data->Scene.SoundEffects[i], 0);
-								data->CurrentBGChangeNumber = i;
-								break;
-							}
-						}
-						else {
-							break;
-						}
-					}
-
 					data->TextColor.a = 0;
 				}
 				if (data->CurrentTextNumber >= data->Scene.DialogCount && data->Scene.OptionCount <= 0) {
@@ -1218,6 +1198,22 @@ void update_main(void)
 
 	//팝업 표현 중일 때는 효과 적용X
 	if (!data->isShowingPopUp) {
+
+		//이펙트 사운드 추가
+		for (int32 i = data->CurrentSoundEffectNumber; i < MAX_EFFECT_SOUND_COUNT; i++) {
+			if (data->Scene.AddSoundEffectTimings[i] > -1)
+			{
+				if (data->CurrentTextNumber + 1 == data->Scene.AddSoundEffectTimings[i]) {
+					Audio_PlaySoundEffect(&data->Scene.SoundEffects[i], 0);
+					data->CurrentBGChangeNumber = i;
+					break;
+				}
+			}
+			else {
+				break;
+			}
+		}
+
 		//아이템 이미지 적용
 		if (data->CurrentTextNumber + 1 >= data->Scene.AddItemImageTiming && data->CurrentTextNumber + 1 < data->Scene.FadeItemImageTiming) {
 			data->showItemImage = true;
