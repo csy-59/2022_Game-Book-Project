@@ -17,6 +17,7 @@ static ESceneType s_nextScene = SCENE_NULL;
 Music   TitleBGM;
 
 #pragma region TitleScene
+//메인에서 판별
 typedef enum TitleMenu {
 	START,
 	ENDING,
@@ -537,7 +538,7 @@ void log2OnFinished(int32 channel)
 #pragma endregion
 
 bool s_IsEndingScene = false;		//엔딩 모음집과 연결되었는지 확인
-static int32 s_CurrentScene = 1;	//현재 씬 넘버
+static int32 s_CurrentScene = 71;	//현재 씬 넘버
 
 #pragma region MainScene
 typedef struct tagMainScene {
@@ -588,6 +589,7 @@ typedef struct tagMainScene {
 
 	//효과음
 	int32		CurrentSoundEffectNumber;			//현재 표현중인 효과음 번수
+	bool		isPlayedEffect;						//효과음을 실행했는지
 
 } MainScene;
 
@@ -973,6 +975,7 @@ void init_main(void)
 
 	//####효과음
 	data->CurrentSoundEffectNumber = 0; //효과음 번호
+	data->isPlayedEffect = false;//효과음 판별 초기화
 
 
 	//##암전 효과
@@ -1059,6 +1062,8 @@ void update_main(void)
 							break;
 						}
 					}
+
+					data->isPlayedEffect = false;
 
 					data->TextColor.a = 0;
 				}
@@ -1198,19 +1203,21 @@ void update_main(void)
 
 	//팝업 표현 중일 때는 효과 적용X
 	if (!data->isShowingPopUp) {
-
-		//이펙트 사운드 추가
-		for (int32 i = data->CurrentSoundEffectNumber; i < MAX_EFFECT_SOUND_COUNT; i++) {
-			if (data->Scene.AddSoundEffectTimings[i] > -1)
-			{
-				if (data->CurrentTextNumber + 1 == data->Scene.AddSoundEffectTimings[i]) {
-					Audio_PlaySoundEffect(&data->Scene.SoundEffects[i], 0);
-					data->CurrentBGChangeNumber = i;
+		if (!data->isPlayedEffect) {
+			//이펙트 사운드 추가
+			for (int32 i = data->CurrentSoundEffectNumber; i < MAX_EFFECT_SOUND_COUNT; i++) {
+				if (data->Scene.AddSoundEffectTimings[i] > -1)
+				{
+					if (data->CurrentTextNumber + 1 == data->Scene.AddSoundEffectTimings[i]) {
+						Audio_PlaySoundEffect(&data->Scene.SoundEffects[i], 0);
+						data->isPlayedEffect = true;
+						data->CurrentBGChangeNumber = i;
+						break;
+					}
+				}
+				else {
 					break;
 				}
-			}
-			else {
-				break;
 			}
 		}
 
@@ -1453,7 +1460,7 @@ void release_main(void)
 typedef struct EndSceneData
 {
 
-	Text    Gototitle;					//타이틀로 갈 수 있는 메세지
+	Text    Gototitle;					//
 	Text	SeeEnding[17];				//해당 엔딩을 본 경우 해당 엔딩 제목 표시
 	Music   TitleBGM;
 	float   Volume;
